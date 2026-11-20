@@ -98,7 +98,11 @@ export function idCompare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+/** Ticket-04 benchmark scene switches. null (the default) = normal rules; headless output is unaffected. */
+export interface BenchFlags { noSpawns: boolean; noDamage: boolean; noPickup: boolean; noFuelLoss: boolean; noEnd: boolean; noChase: boolean }
+
 export class Sim {
+  bench: BenchFlags | null = null;
   readonly tuning: Tuning;
   readonly map: NightDef;
   readonly night: 1 | 2 | 3;
@@ -385,9 +389,9 @@ export class Sim {
     // 2b (Ticket-03): fuel decay 1/s for every lit lantern + 5/s per draining shade (cumulative)
     const decay = Math.round((t.fuel_decay_per_s * FUEL_UNIT) / TICK_HZ);
     const drain = Math.round((t.drain_per_s * FUEL_UNIT) / TICK_HZ);
-    for (const l of this.lanterns) if (l.lit) l.fuel -= decay;
+    if (!this.bench?.noFuelLoss) for (const l of this.lanterns) if (l.lit) l.fuel -= decay;
     for (const s of this.shades) {
-      if (s.state !== 'drain') continue;
+      if (s.state !== 'drain' || this.bench?.noFuelLoss) continue;
       const l = this.lanterns.find((x) => x.id === s.lanternTarget);
       if (!l || !l.lit) continue;
       l.fuel -= drain;
@@ -421,7 +425,7 @@ export class Sim {
     if (p.respawnWait === 0) this.movePlayer(input, edge);
 
     // 4. Pick up fireflies and charms.
-    if (this.playerTargetable()) {
+    if (this.playerTargetable() && !this.bench?.noPickup) {
       for (let i = 0; i < this.motes.length && p.carried < this.capacity; ) {
         const m = this.motes[i];
         const pickable = m.born < this.simTick && distXZ(m.pos, p.pos) <= t.pickup_radius && Math.abs(p.pos[1] - m.pos[1]) <= PICKUP_DY;
@@ -538,7 +542,7 @@ export class Sim {
     for (const d of this.drifters) this.moveDrifter(d);
 
     // 9. Touch: drifters steal first, then shades hit (ascending id).
-    if (this.playerTargetable()) {
+    if (this.playerTargetable() && !this.bench?.noDamage) {
       for (const d of this.drifters) {
         if (d.state !== 'chase' || distXZ(d.pos, p.pos) > DRIFTER_TOUCH) continue;
         const amount = Math.min(DRIFTER_STEAL, p.carried);
@@ -567,10 +571,11 @@ export class Sim {
     }
 
     // 10. Scheduled spawns (new entities interact from the next tick).
-    this.spawnScheduled();
+    if (!this.bench?.noSpawns) this.spawnScheduled();
 
     // 11. Win / lose (Ticket-03): no flames -> lost first; at dawn win iff lit >= ceil(0.6 x total).
-    if (p.flames <= 0) this.endGame('lost', 'no_flames');
+    if (this.bench?.noEnd) { /* benchmark: night never ends */ }
+    else if (p.flames <= 0) this.endGame('lost', 'no_flames');
     else if (this.duration - this.simTick / TICK_HZ <= 1e-9) {
       if (this.litCount >= this.litNeeded) this.endGame('won', 'dawn_survived');
       else this.endGame('lost', 'dawn');
@@ -766,7 +771,7 @@ export class Sim {
         break;
       case 'wander': {
         const dp = distXZ(s.pos, p.pos);
-        if (this.playerTargetable() && dp <= SHADE_DETECT) {
+        if (this.playerTargetable() && dp <= SHADE_DETECT && !this.bench?.noChase) {
           s.state = 'chase';
           s.target = null;
           this.moveToward(s.pos, p.pos, speed);

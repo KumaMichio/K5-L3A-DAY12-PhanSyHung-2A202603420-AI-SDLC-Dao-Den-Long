@@ -5,12 +5,11 @@
  * Exit codes: 0 ok · 2 malformed inputs/scenario · 1 any other error (bad args, missing file, ...).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { loadTuning } from './tuning.js';
 import { FormatError, parseInputs, parseScenario, type InputFrame } from '../sim/parse.js';
 import { NIGHTS } from '../sim/maps.js';
 import { runHeadless } from '../sim/run.js';
-import type { Scenario, Tuning } from '../sim/types.js';
+import type { Scenario } from '../sim/types.js';
 
 class UsageError extends Error {}
 
@@ -50,12 +49,6 @@ function readJson(path: string): unknown {
   } catch (e) {
     throw new FormatError(`${path}: invalid JSON (${(e as Error).message})`);
   }
-}
-
-export function loadTuning(): Tuning {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const contract = JSON.parse(readFileSync(resolve(here, '../../game.contract.json'), 'utf8'));
-  return contract.tuning as Tuning;
 }
 
 function main(argv: string[]): number {

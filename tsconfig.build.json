@@ -1,5 +1,15 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "dist", "lib": ["ES2022"] },
-  "include": ["src/sim", "src/headless"]
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": [
+      "ES2022"
+    ]
+  },
+  "include": [
+    "src/sim",
+    "src/headless",
+    "src/shared"
+  ]
 }
