@@ -1,0 +1,14 @@
+{
+  "contract_version": "1.3",
+  "avg_fps": 92.1,
+  "p1_low_fps": 33.6,
+  "frame_ms_p95": 20,
+  "frames": 2762,
+  "load_ms": 1561,
+  "peak_mem_mb": 532,
+  "vsync_off": true,
+  "renderer": "three.js r170 WebGL2 on Chrome/158.0.8127.36 (ANGLE (Intel, Intel(R) UHD Graphics 630 (0x00003E9B) Direct3D11 vs_5_0 ps_5_0, D3D11))",
+  "os": "Windows_NT 10.0.26200 x64 · Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz · 16 GB RAM",
+  "shades": 200,
+  "motes": 100
+}
