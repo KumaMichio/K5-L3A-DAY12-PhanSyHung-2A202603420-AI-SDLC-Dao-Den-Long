@@ -1,24 +1,34 @@
 /**
  * Procedural character / prop models (Three.js primitives only, no external assets).
  * Visual only: nothing here touches gameplay or headless output.
- * Mây's look: hooded wanderer (cream hood, dark face, glowing eyes, olive scarf, harness + pouches,
+ * Mây's look: hooded wanderer (cream hood, dark face, glowing eyes, red scarf (standard palette), harness + pouches,
  * plant basket, crooked staff with a glass orb) + the nón lá with a small lantern required by PRD-0.
  */
 import * as THREE from 'three';
 
+/** Ticket-02 standard palette (Part 3) where it applies; other details are ours. */
 export const PALETTE = {
-  cream: 0xd8cfbd,
+  cream: 0xe8e2d0, // áo Mây
+  scarf: 0xc8102e, // khăn Mây / Bùa Gió
+  gold: 0xf2c14e,
+  drifter: 0x8fa3b8,
+  lanternLit: 0xffb347,
+  lanternCore: 0xffe9b0,
+  lanternOff: 0x5b5f6e,
+  moteCore: 0xfff6c2,
+  moteHalo: 0xffe58a,
+  shadeStunned: 0x3a3450,
   olive: 0x5f6e35,
   oliveDark: 0x3c4624,
   umber: 0x4a3f38,
   leather: 0x6b4a30,
   amber: 0xe39a2b,
-  wood: 0x5b3d26,
+  wood: 0x6b4a2f,
   void: 0x0d0a09,
   straw: 0xd9b56b,
-  ink: 0x1a0b24,
-  inkGlow: 0x2b0c40,
-  shadeEye: 0xd27bff,
+  ink: 0x120a1a, // Bóng Mực thân
+  inkGlow: 0x7a3cff, // Bóng Mực viền
+  shadeEye: 0x7a3cff,
 };
 
 const std = (color: number, o: THREE.MeshStandardMaterialParameters = {}) =>
@@ -130,10 +140,11 @@ export class MayModel {
     b.add(jar);
 
     // scarf + hanging tail
-    const scarf = mesh(new THREE.TorusGeometry(0.22, 0.09, 10, 22), olive, 0, 1.08, 0);
+    const red = std(P.scarf);
+    const scarf = mesh(new THREE.TorusGeometry(0.22, 0.09, 10, 22), red, 0, 1.08, 0);
     scarf.rotation.x = Math.PI / 2;
     b.add(scarf);
-    const tail = mesh(new THREE.BoxGeometry(0.14, 0.4, 0.05), olive, 0.13, 0.88, 0.27);
+    const tail = mesh(new THREE.BoxGeometry(0.14, 0.4, 0.05), red, 0.13, 0.88, 0.27);
     tail.rotation.set(-0.15, 0, 0.15);
     b.add(tail);
 
@@ -296,7 +307,7 @@ export class ShadeModel {
   constructor(phase: number) {
     this.phase = phase;
     const P = PALETTE;
-    this.bodyMat = std(P.ink, { emissive: P.inkGlow, emissiveIntensity: 0.55, roughness: 0.45, side: THREE.DoubleSide, transparent: true });
+    this.bodyMat = std(P.ink, { emissive: P.inkGlow, emissiveIntensity: 0.12, roughness: 0.45, side: THREE.DoubleSide, transparent: true });
     this.eyeMat = basic(P.shadeEye);
     const b = this.body;
     this.root.add(b);
@@ -351,7 +362,7 @@ export class ShadeModel {
       this.drops.push(d);
       b.add(d);
     }
-    this.light = new THREE.PointLight(0x9b4dff, 2.5, 5, 1.8);
+    this.light = new THREE.PointLight(P.inkGlow, 0, 0.01); // no real light: keeps the light count (and FPS) bounded
     this.light.position.set(0, 0.5, 0.3);
     b.add(this.light);
 
@@ -367,11 +378,12 @@ export class ShadeModel {
     this.shadow.position.y = -y + 0.03;
     this.body.rotation.y = Math.atan2(player[0] - pos[0], player[2] - pos[2]);
 
-    this.bodyMat.opacity = stunned ? 0.5 : 1;
-    this.bodyMat.emissiveIntensity = stunned ? 0.15 : 0.55 + Math.sin(t * 3 + this.phase) * 0.15;
+    this.bodyMat.opacity = stunned ? 0.6 : 1;
+    this.bodyMat.color.setHex(stunned ? PALETTE.shadeStunned : PALETTE.ink);
+    this.bodyMat.emissiveIntensity = stunned ? 0 : 0.12 + Math.sin(t * 3 + this.phase) * 0.05;
     this.eyeMat.color.setHex(stunned ? 0xb9c6ff : PALETTE.shadeEye);
     for (const g of this.eyeGlow) g.visible = !stunned;
-    this.light.intensity = stunned ? 0.4 : 2.5;
+    
     const s = stunned ? 0.82 + Math.sin(t * 18) * 0.03 : 1 + Math.sin(t * 5 + this.phase) * 0.04;
     this.body.scale.set(s, stunned ? s * 0.92 : s, s);
     this.body.rotation.z = stunned ? Math.sin(t * 9) * 0.12 : 0;
@@ -414,7 +426,7 @@ export class GreatLanternModel {
 
     // hanging silk lantern (Hội An style): body, ribs, caps, tassel
     this.hang.position.set(0.88, 3.5, 0);
-    this.silk = std(0x5a2a20, { emissive: 0xff8a2a, emissiveIntensity: 0, roughness: 0.7 });
+    this.silk = std(P.lanternOff, { emissive: P.lanternLit, emissiveIntensity: 0, roughness: 0.7 });
     const bodyY = -0.75;
     const body = mesh(new THREE.SphereGeometry(0.42, 22, 16), this.silk, 0, bodyY, 0);
     body.scale.y = 1.25;
@@ -432,9 +444,9 @@ export class GreatLanternModel {
     const tassel = mesh(new THREE.ConeGeometry(0.07, 0.4, 8), std(0xb3262a), 0, bodyY - 0.75, 0);
     tassel.rotation.x = Math.PI;
     this.hang.add(tassel);
-    this.glow = glowSprite(0xffa040, 3.2);
+    this.glow = glowSprite(P.lanternCore, 3.2);
     this.glow.position.y = bodyY;
-    this.light = new THREE.PointLight(0xffa940, 0, 26, 1.4);
+    this.light = new THREE.PointLight(P.lanternLit, 0, 26, 1.4);
     this.light.position.y = bodyY;
     this.hang.add(this.glow, this.light);
     this.root.add(this.hang);
@@ -442,7 +454,7 @@ export class GreatLanternModel {
 
   update(t: number, lit: boolean, fill: number): void {
     this.silk.emissiveIntensity = lit ? 1.6 + Math.sin(t * 3) * 0.1 : 0.5 * fill;
-    this.silk.color.setHex(lit ? 0xc8452a : 0x5a2a20);
+    this.silk.color.setHex(lit ? PALETTE.lanternLit : PALETTE.lanternOff);
     this.light.intensity = lit ? 40 : 5 * fill;
     this.glow.visible = lit || fill > 0;
     this.glow.scale.setScalar(lit ? 3.2 + Math.sin(t * 2.5) * 0.15 : 1 + fill);
@@ -459,7 +471,7 @@ export class MoteModel {
 
   constructor(seed: number) {
     this.seed = seed;
-    this.root.add(mesh(new THREE.SphereGeometry(0.06, 8, 6), basic(0xfff1a8)));
+    this.root.add(mesh(new THREE.SphereGeometry(0.06, 8, 6), basic(PALETTE.moteCore)));
     const wingMat = new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
     for (const s of [-1, 1]) {
       const w = mesh(new THREE.CircleGeometry(0.07, 8), wingMat, s * 0.06, 0.03, 0);
@@ -467,7 +479,7 @@ export class MoteModel {
       this.wings.push(w);
       this.root.add(w);
     }
-    this.glow = glowSprite(0xffcf5a, 0.75);
+    this.glow = glowSprite(PALETTE.moteHalo, 0.75);
     this.root.add(this.glow);
   }
 
@@ -477,5 +489,70 @@ export class MoteModel {
     this.root.position.set(pos[0] + Math.sin(t * 0.8 + s) * 0.15, 0.8 + Math.sin(t * 2 + s) * 0.2, pos[2] + Math.cos(t * 0.7 + s) * 0.15);
     this.glow.scale.setScalar(0.6 + 0.25 * (0.5 + 0.5 * Math.sin(t * 4 + s * 3)));
     this.wings.forEach((w, i) => (w.rotation.y = (i ? -1 : 1) * (0.4 + Math.sin(t * 30 + s) * 0.6)));
+  }
+}
+
+// =====================================================================================  Gió Lạc
+export class DrifterModel {
+  readonly root = new THREE.Group();
+  private readonly ribbon: THREE.Mesh;
+  private readonly base: Float32Array;
+  private readonly mat: THREE.MeshStandardMaterial;
+  private readonly sack: THREE.Mesh;
+
+  constructor() {
+    // a grey-blue silk ribbon: a long thin plane whose vertices wave every frame
+    const geo = new THREE.PlaneGeometry(2.4, 0.35, 24, 1);
+    geo.rotateY(Math.PI / 2); // length along local Z
+    this.base = Float32Array.from(geo.attributes.position.array as Float32Array);
+    this.mat = new THREE.MeshStandardMaterial({ color: PALETTE.drifter, emissive: PALETTE.drifter, emissiveIntensity: 0.35, side: THREE.DoubleSide, transparent: true, opacity: 0.9, roughness: 0.4 });
+    this.ribbon = new THREE.Mesh(geo, this.mat);
+    this.sack = mesh(new THREE.SphereGeometry(0.16, 10, 8), basic(PALETTE.moteHalo), 0, 0, -1.1);
+    this.root.add(this.ribbon, this.sack, glowSprite(PALETTE.drifter, 1.2));
+  }
+
+  update(t: number, pos: readonly number[], state: string, stolen: number, player: readonly number[]): void {
+    this.root.visible = state !== 'removed';
+    if (!this.root.visible) return;
+    this.root.position.set(pos[0], pos[1] + Math.sin(t * 3) * 0.15, pos[2]);
+    const away = state === 'flee';
+    const dx = player[0] - pos[0];
+    const dz = player[2] - pos[2];
+    this.root.rotation.y = Math.atan2(away ? -dx : dx, away ? -dz : dz);
+    const p = this.ribbon.geometry.attributes.position as THREE.BufferAttribute;
+    const speed = state === 'idle' ? 3 : 8;
+    for (let i = 0; i < p.count; i++) {
+      const z = this.base[i * 3 + 2];
+      p.setX(i, this.base[i * 3] + Math.sin(z * 2.5 - t * speed) * 0.25);
+      p.setY(i, this.base[i * 3 + 1] + Math.cos(z * 2 - t * speed * 0.8) * 0.15);
+    }
+    p.needsUpdate = true;
+    this.mat.emissiveIntensity = state === 'chase' ? 0.7 : 0.35;
+    this.sack.visible = stolen > 0;
+  }
+}
+
+// =====================================================================================  Bùa Gió
+export class CharmModel {
+  readonly root = new THREE.Group();
+
+  constructor(pos: readonly number[]) {
+    this.root.position.set(pos[0], pos[1], pos[2]);
+    const tag = new THREE.Group();
+    tag.position.y = 1.1;
+    tag.add(
+      mesh(new THREE.BoxGeometry(0.42, 0.62, 0.02), std(PALETTE.gold, { emissive: PALETTE.gold, emissiveIntensity: 0.4 })),
+      mesh(new THREE.BoxGeometry(0.34, 0.54, 0.03), std(PALETTE.scarf, { emissive: PALETTE.scarf, emissiveIntensity: 0.35 })),
+      mesh(new THREE.TorusGeometry(0.09, 0.012, 6, 20), std(PALETTE.gold, { emissive: PALETTE.gold, emissiveIntensity: 0.6 }), 0, 0.05, 0.02),
+      glowSprite(PALETTE.scarf, 1.4),
+    );
+    this.root.add(tag);
+  }
+
+  update(t: number, available: boolean): void {
+    this.root.visible = available;
+    const tag = this.root.children[0];
+    tag.rotation.y = t * 1.5;
+    tag.position.y = 1.1 + Math.sin(t * 2) * 0.12;
   }
 }
