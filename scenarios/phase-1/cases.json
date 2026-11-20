@@ -1,0 +1,54 @@
+{
+ "bad": {
+  "night": 1,
+  "inputs": "bad",
+  "expectExit": 2
+ },
+ "cases": [
+  {
+   "name": "default-seed1",
+   "night": 1,
+   "ticks": 3600,
+   "proves": "Default Night 1 world (random motes/shades, seeded); standing still -> shades catch Mây"
+  },
+  {
+   "name": "win",
+   "night": 1,
+   "scenario": "win",
+   "inputs": "win",
+   "ticks": 600,
+   "proves": "Walk, pick 5 motes, deposit, light last lantern -> won/all_lit + bonus"
+  },
+  {
+   "name": "hit-lose",
+   "night": 1,
+   "scenario": "hit-lose",
+   "ticks": 600,
+   "proves": "Shade chase + hit, drop ratio, invulnerability, lost/no_flames"
+  },
+  {
+   "name": "pulse",
+   "night": 1,
+   "scenario": "pulse",
+   "inputs": "pulse",
+   "ticks": 240,
+   "proves": "Pulse stuns only shades within pulse_radius, costs light, scores per_stun"
+  },
+  {
+   "name": "safe-zone",
+   "night": 1,
+   "scenario": "safe-zone",
+   "ticks": 900,
+   "every": 60,
+   "proves": "Shade cannot enter safe_radius around a lantern; no hit"
+  },
+  {
+   "name": "dawn",
+   "night": 1,
+   "scenario": "dawn",
+   "ticks": 1000,
+   "every": 30,
+   "proves": "Time runs out -> lost/dawn at tick 120"
+  }
+ ]
+}

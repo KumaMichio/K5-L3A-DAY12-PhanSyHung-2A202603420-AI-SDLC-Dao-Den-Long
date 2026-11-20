@@ -1,0 +1,116 @@
+{
+ "bad": {
+  "night": 1,
+  "scenario": "bad-state",
+  "expectExit": 2
+ },
+ "cases": [
+  {
+   "name": "n1-default",
+   "night": 1,
+   "ticks": 21600,
+   "every": 60,
+   "proves": "Night 1 standard map: 20 motes, +1 per 240 ticks, shades 2@300 then every 480, max 6; full night headless"
+  },
+  {
+   "name": "n2-default",
+   "night": 2,
+   "ticks": 21600,
+   "every": 60,
+   "proves": "Night 2 map (2 islands, bridge, pads), shades every 420 max 8, drifters at 1200/2400, charm C1"
+  },
+  {
+   "name": "n3-default",
+   "night": 3,
+   "ticks": 21600,
+   "every": 60,
+   "proves": "Night 3 map (3 tiers, ramps, tower), shades 4.5 m/s every 360 max 10, wind every 1800"
+  },
+  {
+   "name": "dash",
+   "night": 1,
+   "scenario": "quiet",
+   "inputs": "dash",
+   "ticks": 100,
+   "proves": "Dash 14 m/s x 12 ticks; press at tick 50 blocked by 1.5 s cooldown; next dash at 91"
+  },
+  {
+   "name": "fall",
+   "night": 1,
+   "scenario": "fall",
+   "inputs": "fall",
+   "ticks": 200,
+   "proves": "Fall (Y<-10): player_hit by fall with lost; 60-tick wait; respawn at start, invuln"
+  },
+  {
+   "name": "pause",
+   "night": 1,
+   "scenario": "quiet",
+   "inputs": "pause",
+   "ticks": 30,
+   "proves": "Pause: tick advances, sim_tick/time frozen, state paused; paused/resumed events"
+  },
+  {
+   "name": "eviction",
+   "night": 1,
+   "scenario": "eviction",
+   "inputs": "interact",
+   "ticks": 60,
+   "proves": "Lantern lit with a shade inside: shade recoils to the 6 m edge, no hit"
+  },
+  {
+   "name": "drifter-steal",
+   "night": 2,
+   "scenario": "drifter-steal",
+   "ticks": 300,
+   "proves": "Gió Lạc idle->chase (carry>=5, <=15 m), steals 3 at <=1.2 m, flees 240 ticks, removed"
+  },
+  {
+   "name": "drifter-drop",
+   "night": 2,
+   "scenario": "drifter-drop",
+   "inputs": "pulse",
+   "ticks": 130,
+   "proves": "Pulse on fleeing drifter with loot: drifter_drop, 3 dropped motes, removed 120 ticks later"
+  },
+  {
+   "name": "charm",
+   "night": 2,
+   "scenario": "charm",
+   "inputs": "charm",
+   "ticks": 2701,
+   "every": 100,
+   "proves": "Bùa Gió: charm_picked 600 ticks, speed 7.2, respawn after 2700"
+  },
+  {
+   "name": "pad-n2",
+   "night": 2,
+   "scenario": "pad-n2",
+   "ticks": 120,
+   "proves": "Night 2 jump pad: vy 14 + 24 m/s toward island B, lands on B after ~1.4 s"
+  },
+  {
+   "name": "pad-n3",
+   "night": 3,
+   "scenario": "pad-n3",
+   "ticks": 90,
+   "proves": "Night 3 jump pad (0,3,13): lands on tier 2 (Y=6)"
+  },
+  {
+   "name": "ramp-n3",
+   "night": 3,
+   "scenario": "ramp-n3",
+   "inputs": "ramp-n3",
+   "ticks": 130,
+   "proves": "Night 3 ramp at 30°: walks from Y=0 up to tier 1 (Y=3)"
+  },
+  {
+   "name": "wind-n3",
+   "night": 3,
+   "scenario": "wind-n3",
+   "ticks": 2110,
+   "every": 30,
+   "proves": "Night 3 wind: active 1800..2100, pushes 2 m/s (10 m)"
+  }
+ ]
+}
