@@ -3,10 +3,10 @@ import * as THREE from 'three';
 import contract from '../../game.contract.json' with { type: 'json' };
 import { ISLAND_RADIUS, Sim, TICK_HZ } from '../sim/sim.js';
 import type { InputState, Tuning } from '../sim/types.js';
+import { GreatLanternModel, MayModel, MoteModel, ShadeModel } from './models.js';
 
 const T = contract.tuning as Tuning;
 const WARM = 0xffa940;
-const INK = 0x2a0f3d;
 
 // ------------------------------------------------------------------ renderer / scene
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -42,57 +42,35 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-// ------------------------------------------------------------------ meshes
-const moteGeo = new THREE.SphereGeometry(0.18, 10, 8);
-const moteMat = new THREE.MeshBasicMaterial({ color: 0xffe27a });
-const shadeGeo = new THREE.SphereGeometry(0.9, 16, 12);
-const shadeMat = new THREE.MeshStandardMaterial({ color: INK, emissive: 0x3d1260, emissiveIntensity: 0.6, roughness: 0.4 });
-const stunMat = new THREE.MeshStandardMaterial({ color: 0x7b5a9e, transparent: true, opacity: 0.45 });
-
-function makePlayer(): THREE.Group {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.8, 4, 10), new THREE.MeshStandardMaterial({ color: 0x4f7cc4 }));
-  body.position.y = 0.75;
-  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.35, 20), new THREE.MeshStandardMaterial({ color: 0xd9b56b }));
-  hat.position.y = 1.75; // nón lá
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: WARM }));
-  lamp.position.set(0.6, 1.35, 0); // small lantern hanging from the hat brim
-  const light = new THREE.PointLight(WARM, 6, 9, 1.6);
-  light.position.copy(lamp.position);
-  g.add(body, hat, lamp, light);
-  return g;
-}
-
-interface LanternView { lamp: THREE.Mesh; light: THREE.PointLight; ring: THREE.Mesh }
-let lanternViews: LanternView[] = [];
+// ------------------------------------------------------------------ models
+const may = new MayModel();
+scene.add(may.root);
 const dynamic = new THREE.Group();
 scene.add(dynamic);
-const player = makePlayer();
-scene.add(player);
+let lanternModels: GreatLanternModel[] = [];
+const moteModels = new Map<string, MoteModel>();
+const shadeModels = new Map<string, ShadeModel>();
+const pulses: { mesh: THREE.Mesh; age: number }[] = [];
 
 // ------------------------------------------------------------------ game state
 let sim: Sim;
-const moteMeshes = new Map<string, THREE.Mesh>();
-const shadeMeshes = new Map<string, THREE.Mesh>();
-const pulses: { mesh: THREE.Mesh; age: number }[] = [];
 
 function newGame(): void {
   sim = new Sim(T, (Math.random() * 2 ** 31) | 0);
   dynamic.clear();
-  moteMeshes.clear();
-  shadeMeshes.clear();
-  lanternViews = sim.lanterns.map((l) => {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 3, 8), new THREE.MeshStandardMaterial({ color: 0x5a3b28 }));
-    post.position.set(l.pos[0], 1.5, l.pos[2]);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshStandardMaterial({ color: 0x3a2f2a, emissive: WARM, emissiveIntensity: 0 }));
-    lamp.position.set(l.pos[0], 3.3, l.pos[2]);
-    const light = new THREE.PointLight(WARM, 0, 26, 1.4);
-    light.position.copy(lamp.position);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(T.safe_radius - 0.08, T.safe_radius, 48), new THREE.MeshBasicMaterial({ color: WARM, transparent: true, opacity: 0.18 }));
+  moteModels.clear();
+  shadeModels.clear();
+  may.reset(sim.player.pos);
+  lanternModels = sim.lanterns.map((l) => {
+    const m = new GreatLanternModel(l.pos);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(T.safe_radius - 0.08, T.safe_radius, 48),
+      new THREE.MeshBasicMaterial({ color: WARM, transparent: true, opacity: 0.18 }),
+    );
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(l.pos[0], 0.02, l.pos[2]);
-    dynamic.add(post, lamp, light, ring);
-    return { lamp, light, ring };
+    dynamic.add(m.root, ring);
+    return m;
   });
   document.getElementById('msg')!.style.display = 'none';
 }
@@ -130,7 +108,7 @@ function onEvent(name: string, data: Record<string, unknown>): void {
   if (name === 'pulse') {
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 48), new THREE.MeshBasicMaterial({ color: 0xffd28a, transparent: true, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(player.position.x, 0.3, player.position.z);
+    ring.position.set(sim.player.pos[0], 0.3, sim.player.pos[2]);
     scene.add(ring);
     pulses.push({ mesh: ring, age: 0 });
   } else if (name === 'lantern_lit') say(`Đèn ${data.lantern_id} đã sáng!`);
@@ -146,42 +124,36 @@ function onEvent(name: string, data: Record<string, unknown>): void {
 }
 
 // ------------------------------------------------------------------ sync view with sim
-function sync(time: number): void {
+let moteSeed = 0;
+function sync(dt: number, time: number): void {
   const p = sim.player;
-  player.position.set(p.pos[0], p.pos[1], p.pos[2]);
-  player.rotation.y = camYaw;
-  player.visible = p.invulnTicks === 0 || Math.floor(time * 12) % 2 === 0;
+  may.update(dt, time, p.pos, p.carried, p.invulnTicks === 0 || Math.floor(time * 12) % 2 === 0);
 
-  const seen = new Set<string>();
+  const seenMotes = new Set<string>();
   for (const m of sim.motes) {
-    seen.add(m.id);
-    let mesh = moteMeshes.get(m.id);
-    if (!mesh) { mesh = new THREE.Mesh(moteGeo, moteMat); moteMeshes.set(m.id, mesh); dynamic.add(mesh); }
-    mesh.position.set(m.pos[0], 0.8 + 0.2 * Math.sin(time * 3 + m.pos[0]), m.pos[2]); // hover is visual only
+    seenMotes.add(m.id);
+    let model = moteModels.get(m.id);
+    if (!model) { model = new MoteModel(moteSeed++ * 1.37); moteModels.set(m.id, model); dynamic.add(model.root); }
+    model.update(time, m.pos);
   }
-  for (const [id, mesh] of moteMeshes) if (!seen.has(id)) { dynamic.remove(mesh); moteMeshes.delete(id); }
+  for (const [id, model] of moteModels) if (!seenMotes.has(id)) { dynamic.remove(model.root); moteModels.delete(id); }
 
   for (const s of sim.shades) {
-    let mesh = shadeMeshes.get(s.id);
-    if (!mesh) { mesh = new THREE.Mesh(shadeGeo, shadeMat); shadeMeshes.set(s.id, mesh); dynamic.add(mesh); }
-    mesh.material = s.state === 'stunned' ? stunMat : shadeMat;
-    mesh.position.set(s.pos[0], Math.max(0.9, s.pos[1]) + 0.15 * Math.sin(time * 4), s.pos[2]);
-    mesh.scale.setScalar(1 + 0.08 * Math.sin(time * 6 + s.pos[2]));
+    let model = shadeModels.get(s.id);
+    if (!model) { model = new ShadeModel(shadeModels.size * 2.1); shadeModels.set(s.id, model); dynamic.add(model.root); }
+    model.update(time, s.pos, s.state, p.pos);
   }
 
   let lit = 0;
   sim.lanterns.forEach((l, i) => {
-    const v = lanternViews[i];
-    const fill = l.lit ? 1 : l.deposited / T.lantern_cost;
-    (v.lamp.material as THREE.MeshStandardMaterial).emissiveIntensity = l.lit ? 2.2 : 0.4 * fill;
-    v.light.intensity = l.lit ? 40 : 4 * fill;
+    lanternModels[i].update(time, l.lit, l.lit ? 1 : l.deposited / T.lantern_cost);
     if (l.lit) lit++;
   });
   ambient.intensity = 0.35 + 0.18 * lit; // island brightens as lanterns are lit
 
   const yaw = camYaw;
-  camera.position.set(p.pos[0] - Math.sin(yaw) * 9, p.pos[1] + 5, p.pos[2] - Math.cos(yaw) * 9);
-  camera.lookAt(p.pos[0], p.pos[1] + 1.2, p.pos[2]);
+  camera.position.set(p.pos[0] - Math.sin(yaw) * 7.5, p.pos[1] + 4, p.pos[2] - Math.cos(yaw) * 7.5);
+  camera.lookAt(p.pos[0], p.pos[1] + 1.3, p.pos[2]);
 
   const cd = Math.ceil(p.pulseCooldownTicks / TICK_HZ);
   document.getElementById('hud')!.innerHTML =
@@ -219,6 +191,6 @@ renderer.setAnimationLoop((now) => {
     if (k >= 1) { scene.remove(pl.mesh); pulses.splice(i, 1); }
   }
   if ((toastTimer -= dt) <= 0) toast.textContent = '';
-  sync(now / 1000);
+  sync(dt, now / 1000);
   renderer.render(scene, camera);
 });
