@@ -20,7 +20,7 @@ History: Phase 1 spec [docs/specs/phase-1-PRD-0.md](docs/specs/phase-1-PRD-0.md)
 - Small commits, one change each. Never commit `.env` or keys.
 
 ## Layout
-- `src/sim/` — ALL gameplay rules (deterministic, no DOM, no Date/Math.random). `sim.ts` step order is documented in `docs/notes/phase-1.md` (A7).
+- `src/sim/` — ALL gameplay rules (deterministic, no DOM, no Date/Math.random). `sim.ts` `step()` follows Ticket-02's mandatory 12-step order (numbered comments); `maps.ts` holds the standard maps.
 - `src/headless/cli.ts` — contract CLI. `src/web/main.ts` — Three.js view only; never put rules here.
 - `tests/` (vitest) · `scenarios/phase-N/` (proof inputs) · `docs/proof/phase-N/` (generated, never hand-edited) · `docs/notes/` (assumptions, AI log) · lab docs in `docs/lab/`.
 
