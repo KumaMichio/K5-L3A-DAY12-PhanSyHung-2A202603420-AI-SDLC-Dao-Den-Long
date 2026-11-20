@@ -10,9 +10,11 @@ export function serve(root, opts = {}) {
   const base = resolve(root);
   if (!existsSync(join(base, 'index.html'))) throw new Error(`${base}/index.html not found: run "npm run build" first`);
   const server = createServer((req, res) => {
-    let body = '';
-    req.on('data', (c) => { body += c; if (body.length > 1e5) req.destroy(); });
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => { chunks.push(c); size += c.length; if (size > 1e5) req.destroy(); });
     req.on('end', () => {
+      const body = Buffer.concat(chunks).toString('utf8'); // decode once: chunks may split UTF-8 characters
       if (opts.api && opts.api(req, res, body)) return;
       const url = decodeURIComponent((req.url ?? '/').split('?')[0]);
       const file = normalize(join(base, url === '/' ? 'index.html' : url));
