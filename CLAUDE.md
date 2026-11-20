@@ -3,8 +3,9 @@
 Solo lab: a 3D game built across 4 phases. Correct-to-spec beats complex or pretty.
 
 ## Current phase
-**Phase 3 (TICKET-03 change request, Test Contract v1.2)** — spec: [docs/specs/phase-3-TICKET-03.md](docs/specs/phase-3-TICKET-03.md). It REPLACES the [THAY THẾ] rules of Ticket-02: lantern fuel (integer units of 1/60), drain state, dawn-survival win, new scoring, growing capacity. Design: [docs/adr/0001-lantern-fuel-and-dawn-win.md](docs/adr/0001-lantern-fuel-and-dawn-win.md); breaking changes go in [CHANGELOG.md](CHANGELOG.md).
-- Obsolete tests: update or delete WITH a written reason (notes "Superseded"); never `skip` silently.
+**Phase 4 (TICKET-04 release, Test Contract v1.3)** — spec: [docs/specs/phase-4-TICKET-04.md](docs/specs/phase-4-TICKET-04.md). Non-functional: bench (`bench_cmd`, 1280×720 browser via puppeteer, fixed scene), soak (`soak_cmd`, 10 headless nights, RSS), local leaderboard (on disk via the launcher + `--export-leaderboard`), accessibility (rebinding, subtitles, reduced motion, 18 px / ×1.25 text), packaging (≤ 3 commands, Release v1.0.0), retro.
+- Bench/soak flags must NOT change normal headless output (all v1.0–v1.2 tests stay green).
+Phase 3 (in force): [docs/specs/phase-3-TICKET-03.md](docs/specs/phase-3-TICKET-03.md), ADR [docs/adr/0001-lantern-fuel-and-dawn-win.md](docs/adr/0001-lantern-fuel-and-dawn-win.md).
 Phase 2 (still in force unless replaced): [docs/specs/phase-2-TICKET-02.md](docs/specs/phase-2-TICKET-02.md), notes [docs/notes/phase-2.md](docs/notes/phase-2.md).
 History: Phase 1 spec [docs/specs/phase-1-PRD-0.md](docs/specs/phase-1-PRD-0.md) (superseded parts are listed in the Phase 2 notes).
 - The 12-step tick order in the ticket is mandatory; `Sim.step` must follow it step by step, with the step number in a comment.
