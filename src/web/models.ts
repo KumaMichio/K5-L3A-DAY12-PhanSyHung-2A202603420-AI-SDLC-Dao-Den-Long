@@ -46,7 +46,7 @@ function mesh(geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 
 }
 
 let glowTex: THREE.Texture | null = null;
-function glowTexture(): THREE.Texture {
+export function glowTexture(): THREE.Texture {
   if (glowTex) return glowTex;
   const c = document.createElement('canvas');
   c.width = c.height = 64;
@@ -305,7 +305,7 @@ export class ShadeModel {
   private readonly tendrils: THREE.Mesh[] = [];
   private readonly drops: THREE.Mesh[] = [];
   private readonly shadow: THREE.Mesh;
-  private readonly light: THREE.PointLight;
+  // (no PointLight: every light costs shader work for ALL materials; 200 bench shades broke the shader limits)
   private readonly phase: number;
   private readonly drain: THREE.Sprite;
 
@@ -371,9 +371,6 @@ export class ShadeModel {
       this.drops.push(d);
       b.add(d);
     }
-    this.light = new THREE.PointLight(P.inkGlow, 0, 0.01); // no real light: keeps the light count (and FPS) bounded
-    this.light.position.set(0, 0.5, 0.3);
-    b.add(this.light);
 
     this.shadow = mesh(new THREE.CircleGeometry(0.75, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }));
     this.shadow.rotation.x = -Math.PI / 2;
@@ -608,5 +605,148 @@ export class CharmModel {
     const tag = this.root.children[0];
     tag.rotation.y = t * 1.5;
     tag.position.y = 1.1 + Math.sin(t * 2) * 0.12;
+  }
+}
+
+// =====================================================================================  instanced crowds
+// Ticket-04 bench: 200 shades + 100 fireflies. One InstancedMesh per part keeps it to a handful of
+// draw calls (separate meshes per shade were ~5 000 draw calls and ran at ~7 FPS).
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+function baked(geo: THREE.BufferGeometry, pos: [number, number, number], rot: [number, number, number] = [0, 0, 0], scale: [number, number, number] = [1, 1, 1]): THREE.BufferGeometry {
+  const m = new THREE.Matrix4().compose(new THREE.Vector3(...pos), new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...scale));
+  return geo.applyMatrix4(m);
+}
+
+/** All Ink Shades in 4 draw calls (body, face, eyes, ground shadow). Same silhouette as ShadeModel. */
+export class ShadeCrowd {
+  readonly root = new THREE.Group();
+  private readonly body: THREE.InstancedMesh;
+  private readonly face: THREE.InstancedMesh;
+  private readonly eyes: THREE.InstancedMesh;
+  private readonly shadow: THREE.InstancedMesh;
+  private readonly bodyMat: THREE.MeshStandardMaterial;
+  private readonly m = new THREE.Matrix4();
+  private readonly q = new THREE.Quaternion();
+  private readonly v = new THREE.Vector3();
+  private readonly s = new THREE.Vector3();
+  private readonly c = new THREE.Color();
+
+  constructor(max = 256) {
+    const cloak = new THREE.CylinderGeometry(0.2, 0.62, 1.4, 14, 4, false);
+    const p = cloak.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      if (p.getY(i) < -0.69) {
+        const k = Math.sin(i * 12.9898) * 43758.5453;
+        p.setY(i, p.getY(i) - (k - Math.floor(k)) * 0.35); // tattered hem
+      }
+    }
+    cloak.computeVertexNormals();
+    const parts = [
+      baked(cloak, [0, -0.2, 0]),
+      baked(new THREE.SphereGeometry(0.36, 14, 10), [0, 0.62, 0], [0, 0, 0], [1, 1.08, 1]),
+      baked(new THREE.ConeGeometry(0.16, 0.5, 8), [0, 0.98, -0.18], [-0.95, 0, 0]),
+      baked(new THREE.ConeGeometry(0.09, 0.75, 6), [-0.42, 0.05, 0.2], [2.2, 0, -0.35]),
+      baked(new THREE.ConeGeometry(0.09, 0.75, 6), [0.42, 0.05, 0.2], [2.2, 0, 0.35]),
+      ...Array.from({ length: 7 }, (_, i) => {
+        const a = (i / 7) * Math.PI * 2;
+        return baked(new THREE.ConeGeometry(0.06, 0.55, 5), [Math.cos(a) * 0.48, -1.05, Math.sin(a) * 0.48], [Math.PI + Math.sin(i) * 0.2, 0, Math.cos(i) * 0.25]);
+      }),
+    ];
+    this.bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: PALETTE.inkGlow, emissiveIntensity: 0.12, roughness: 0.45 });
+    this.body = new THREE.InstancedMesh(mergeGeometries(parts)!, this.bodyMat, max);
+    this.face = new THREE.InstancedMesh(baked(new THREE.SphereGeometry(0.26, 12, 8), [0, 0.58, 0.22], [0, 0, 0], [1, 0.95, 0.5]), basic(0x040106), max);
+    const eyeL = baked(new THREE.SphereGeometry(0.05, 8, 6), [-0.09, 0.6, 0.34], [0, 0, -0.35], [1.3, 0.8, 0.5]);
+    const eyeR = baked(new THREE.SphereGeometry(0.05, 8, 6), [0.09, 0.6, 0.34], [0, 0, 0.35], [1.3, 0.8, 0.5]);
+    this.eyes = new THREE.InstancedMesh(mergeGeometries([eyeL, eyeR])!, new THREE.MeshBasicMaterial({ color: 0xffffff }), max);
+    this.shadow = new THREE.InstancedMesh(baked(new THREE.CircleGeometry(0.75, 16), [0, 0, 0], [-Math.PI / 2, 0, 0]),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }), max);
+    for (const im of [this.body, this.face, this.eyes, this.shadow]) {
+      im.count = 0;
+      im.frustumCulled = false;
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.root.add(im);
+    }
+    this.body.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3);
+    this.eyes.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3);
+  }
+
+  update(t: number, list: readonly { pos: readonly number[]; state: string; ticks: number }[], player: readonly number[]): void {
+    const n = Math.min(list.length, this.body.instanceMatrix.count);
+    const accent = shadeAccent();
+    this.bodyMat.emissive.setHex(accent);
+    for (let i = 0; i < n; i++) {
+      const sh = list[i];
+      const stunned = sh.state === 'stunned';
+      const phase = i * 2.1;
+      const y = Math.max(1, sh.pos[1]) + Math.sin(t * 2.2 + phase) * 0.12;
+      let k = stunned ? 0.82 + Math.sin(t * 18) * 0.03 : 1 + Math.sin(t * 5 + phase) * 0.04;
+      if (sh.state === 'spawning') k *= 0.4 + 0.6 * (1 - sh.ticks / 30);
+      this.q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, Math.atan2(player[0] - sh.pos[0], player[2] - sh.pos[2]));
+      this.v.set(sh.pos[0], y, sh.pos[2]);
+      this.s.set(k, stunned ? k * 0.92 : k, k);
+      this.m.compose(this.v, this.q, this.s);
+      this.body.setMatrixAt(i, this.m);
+      this.face.setMatrixAt(i, this.m);
+      this.eyes.setMatrixAt(i, this.m);
+      this.body.setColorAt(i, this.c.setHex(stunned ? PALETTE.shadeStunned : PALETTE.ink));
+      this.eyes.setColorAt(i, this.c.setHex(stunned ? 0xb9c6ff : sh.state === 'drain' ? 0xffffff : accent));
+      this.v.set(sh.pos[0], sh.pos[1] - 0.97, sh.pos[2]);
+      this.s.set(1, 1, 1);
+      this.m.compose(this.v, this.q.identity(), this.s);
+      this.shadow.setMatrixAt(i, this.m);
+    }
+    for (const im of [this.body, this.face, this.eyes, this.shadow]) {
+      im.count = n;
+      im.instanceMatrix.needsUpdate = true;
+    }
+    this.body.instanceColor!.needsUpdate = true;
+    this.eyes.instanceColor!.needsUpdate = true;
+  }
+}
+
+/** All fireflies: instanced cores + one Points layer for the halos (2 draw calls). */
+export class MoteSwarm {
+  readonly root = new THREE.Group();
+  private readonly cores: THREE.InstancedMesh;
+  private readonly halos: THREE.Points;
+  private readonly hpos: Float32Array;
+  private readonly m = new THREE.Matrix4();
+
+  constructor(max = 256) {
+    this.cores = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 8, 6), basic(PALETTE.moteCore), max);
+    this.cores.count = 0;
+    this.cores.frustumCulled = false;
+    this.hpos = new Float32Array(max * 3);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.hpos, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setDrawRange(0, 0);
+    this.halos = new THREE.Points(g, new THREE.PointsMaterial({
+      map: glowTexture(), color: PALETTE.moteHalo, size: 0.9, sizeAttenuation: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+    this.halos.frustumCulled = false;
+    this.root.add(this.cores, this.halos);
+  }
+
+  update(t: number, list: readonly { pos: readonly number[] }[]): void {
+    const n = Math.min(list.length, this.cores.instanceMatrix.count);
+    for (let i = 0; i < n; i++) {
+      const p = list[i].pos;
+      const s = i * 1.37;
+      // the sim position is the ground point; hovering/drifting is visual only
+      const x = p[0] + Math.sin(t * 0.8 + s) * 0.15;
+      const y = p[1] + 0.8 + Math.sin(t * 2 + s) * 0.2;
+      const z = p[2] + Math.cos(t * 0.7 + s) * 0.15;
+      this.m.makeTranslation(x, y, z);
+      this.cores.setMatrixAt(i, this.m);
+      this.hpos[i * 3] = x;
+      this.hpos[i * 3 + 1] = y;
+      this.hpos[i * 3 + 2] = z;
+    }
+    this.cores.count = n;
+    this.cores.instanceMatrix.needsUpdate = true;
+    const g = this.halos.geometry;
+    g.setDrawRange(0, n);
+    (g.attributes.position as THREE.BufferAttribute).needsUpdate = true;
   }
 }
