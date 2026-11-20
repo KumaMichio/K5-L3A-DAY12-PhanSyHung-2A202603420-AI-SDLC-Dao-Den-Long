@@ -11,4 +11,4 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - name: Proof is reproducible (committed evidence == regenerated evidence)
-        run: npm run proof && git diff --exit-code docs/proof/phase-3
+        run: npm run proof && git diff --exit-code docs/proof/phase-4
