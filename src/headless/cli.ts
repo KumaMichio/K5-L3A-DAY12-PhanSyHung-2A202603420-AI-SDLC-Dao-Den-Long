@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Test Contract v1.0 headless entry point.
- * node dist/headless/cli.js --seed <int> --night 1 [--scenario f] [--inputs f] --ticks <int> --out f [--snapshot-every n]
+ * Test Contract v1.1 headless entry point.
+ * node dist/headless/cli.js --seed <int> --night 1|2|3 [--scenario f] [--inputs f] --ticks <int> --out f [--snapshot-every n]
  * Exit codes: 0 ok · 2 malformed inputs/scenario · 1 any other error (bad args, missing file, ...).
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FormatError, parseInputs, parseScenario, type InputFrame } from '../sim/parse.js';
+import { NIGHTS } from '../sim/maps.js';
 import { runHeadless } from '../sim/run.js';
 import type { Scenario, Tuning } from '../sim/types.js';
 
@@ -61,7 +62,7 @@ function main(argv: string[]): number {
   const args = parseArgs(argv);
   const seed = intArg(args, 'seed', { required: true });
   const night = intArg(args, 'night', { required: true });
-  if (night !== 1) throw new UsageError(`--night ${night} is not available (Phase 1 has Night 1 only)`);
+  if (night !== 1 && night !== 2 && night !== 3) throw new UsageError(`--night must be 1, 2 or 3 (got ${night})`);
   const ticks = intArg(args, 'ticks', { required: true, min: 0 });
   const snapshotEvery = intArg(args, 'snapshot-every', { min: 1, def: 10 });
   const out = args.get('out');
@@ -70,10 +71,10 @@ function main(argv: string[]): number {
   const tuning = loadTuning();
   const sp = args.get('scenario');
   const ip = args.get('inputs');
-  const scenario: Scenario | undefined = sp ? parseScenario(readJson(sp), tuning.lantern_count_night1) : undefined;
+  const scenario: Scenario | undefined = sp ? parseScenario(readJson(sp), NIGHTS[night].lanterns.map((l) => l.id)) : undefined;
   const frames: InputFrame[] | undefined = ip ? parseInputs(readJson(ip)) : undefined;
 
-  const lines = runHeadless({ tuning, seed, ticks, snapshotEvery, scenario, frames });
+  const lines = runHeadless({ tuning, seed, night, ticks, snapshotEvery, scenario, frames });
   writeFileSync(out, lines.join('\n') + '\n');
   return 0;
 }
