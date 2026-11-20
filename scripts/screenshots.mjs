@@ -41,6 +41,24 @@ await wait(400);
 await page.click('#b-set');
 await wait(400);
 await page.screenshot({ path: join(outDir, '4-settings.png'), fullPage: false });
+// Nights 2 and 3: start from the menu, walk a little, rotate the camera for a wider view
+for (const n of [2, 3]) {
+  await page.goto(`http://127.0.0.1:${port}/`);
+  await wait(1200);
+  await page.click(`#b-n${n}`);
+  await wait(600);
+  await page.click('#b-go');
+  await page.keyboard.down('KeyW');
+  await wait(1800);
+  await page.keyboard.up('KeyW');
+  await page.keyboard.down('ArrowLeft');
+  await wait(700);
+  await page.keyboard.up('ArrowLeft');
+  await wait(300);
+  await page.bringToFront();
+  if (await page.$('#b-resume')) { await page.click('#b-resume'); await wait(400); } // a lost focus pauses the game
+  await page.screenshot({ path: join(outDir, `${4 + n}-night${n}.png`) });
+}
 console.log(JSON.stringify({ outDir, pageErrors: errors }));
 await browser.close();
 server.close();

@@ -83,7 +83,7 @@ node scripts/screenshots.mjs # README screenshots
   - `peak_mem_mb` is the summed RSS of the browser's process tree.
   - If the bundled Chrome can't start (some Windows policies block it), it falls back to an installed Chrome/Edge, or `CHROME_PATH`.
 - **Our numbers** ([bench.json](bench.json), [soak.json](soak.json)) on a laptop (i5-9300H, Intel UHD 630 iGPU, Windows 11):
-  - Bench: **avg 92.1 FPS, 1 % low 33.6 FPS, p95 20 ms, load 1.6 s, peak 532 MB**.
+  - Bench: **avg 80.1 FPS, 1 % low 32.0 FPS, p95 20.5 ms, load 1.6 s, peak 549 MB** (with the detailed environment; 92.1 / 33.6 before it).
   - Soak: **10 nights, 0 crashes, RSS 52 → 57.5 MB** (limit 1.2×).
 - Evidence and notes per phase: [docs/proof/](docs/proof/) · [docs/notes/](docs/notes/) · ADR [0001](docs/adr/0001-lantern-fuel-and-dawn-win.md).
 
