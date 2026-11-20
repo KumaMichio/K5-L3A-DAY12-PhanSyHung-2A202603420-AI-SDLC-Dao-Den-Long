@@ -6,3 +6,4 @@ out/
 !docs/proof/**/*.jsonl
 .env
 .env.*
+release/

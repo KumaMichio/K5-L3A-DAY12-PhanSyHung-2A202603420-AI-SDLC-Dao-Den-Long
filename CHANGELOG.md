@@ -1,5 +1,23 @@
 # Changelog
 
+## [phase-4] — v1.0.0, Test Contract v1.3 (Ticket-04 "Bình minh: phát hành v1.0.0")
+
+### Breaking changes
+- `contract_version` "1.3"; `game.contract.json` adds `bench_cmd` and `soak_cmd`. `run_cmd` is now `node scripts/play.mjs` (serves the built game and the on-disk leaderboard) instead of the Vite dev server.
+- `npm run build` now also builds the web client (`dist-web/`). `npm test` only builds the headless part.
+- The web client renders MSAA off by default (`?aa=1` turns it on), the same in play and in the bench.
+
+### Added
+- Benchmark mode (`node scripts/bench.mjs`, `?bench` scene) writing `bench.json` (avg / 1 % low FPS, p95, load, peak RSS of the browser tree).
+- Soak test (`dist/headless/soak.js`): 10 nights in one process, crashes and RSS.
+- Local leaderboard: name entry after dawn or a loss, top 10, on disk, `--export-leaderboard`, leaderboard screen.
+- Accessibility: rebinding of all 9 actions with clash detection and reset, subtitles and visual cues (shade spawn with edge arrow, wind, last 10 s, low fuel), reduced motion, 18 px minimum text and ×1.25 large text.
+- `scripts/screenshots.mjs`, README screenshots, `docs/RETRO.md`.
+
+### Changed / fixed
+- Shades and fireflies are drawn with GPU instancing (about 10 draw calls instead of about 5 000). A zero-intensity PointLight per shade was removed (200 of them broke the WebGL shader limits).
+- Simulation: bench switches (off by default). Normal headless output is byte-identical to Phase 3 (proof).
+
 ## [phase-3] — Test Contract v1.2 (Ticket-03 "Đèn cạn dầu")
 
 ### Breaking changes
