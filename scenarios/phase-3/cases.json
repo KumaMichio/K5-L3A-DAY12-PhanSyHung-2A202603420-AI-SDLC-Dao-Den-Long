@@ -1,0 +1,99 @@
+{
+ "bad": {
+  "night": 1,
+  "scenario": "bad-target",
+  "expectExit": 2
+ },
+ "cases": [
+  {
+   "name": "n1-default",
+   "night": 1,
+   "ticks": 21600,
+   "every": 60,
+   "proves": "Night 1 under v1.2: 240 s night, fuel decay, shades drain weak lanterns, no early win"
+  },
+  {
+   "name": "n2-default",
+   "night": 2,
+   "ticks": 21600,
+   "every": 60,
+   "proves": "Night 2 under v1.2 (270 s)"
+  },
+  {
+   "name": "n3-default",
+   "night": 3,
+   "ticks": 21600,
+   "every": 60,
+   "proves": "Night 3 under v1.2 (300 s)"
+  },
+  {
+   "name": "burnout-relight",
+   "night": 1,
+   "scenario": "burnout",
+   "inputs": "relight",
+   "ticks": 41,
+   "proves": "Fuel 0.5 burns out at tick 30 (lantern_out, deposited 0, ever_lit), relit for 5 fireflies (relight: true, +40)"
+  },
+  {
+   "name": "refuel",
+   "night": 1,
+   "scenario": "refuel",
+   "inputs": "interact",
+   "ticks": 1,
+   "proves": "Refuel 55 -> 100 uses ceil(45.02/10) = 5 fireflies, +25"
+  },
+  {
+   "name": "capacity",
+   "night": 1,
+   "scenario": "capacity",
+   "inputs": "interact",
+   "ticks": 1,
+   "proves": "First light: +100, capacity 10 -> 12"
+  },
+  {
+   "name": "drain",
+   "night": 1,
+   "scenario": "drain",
+   "ticks": 400,
+   "proves": "Wandering shade goes to the weak lantern, drains 5/s (+1/s), fuel_drain every 60 ticks, lantern_out, back to wander"
+  },
+  {
+   "name": "drain-pulse",
+   "night": 1,
+   "scenario": "drain-pulse",
+   "inputs": "pulse",
+   "ticks": 125,
+   "proves": "Pulse on a draining shade: +15 total; stun ends in wander"
+  },
+  {
+   "name": "refuel-evict",
+   "night": 1,
+   "scenario": "refuel-evict",
+   "inputs": "interact",
+   "ticks": 60,
+   "proves": "Refuel back to >= 30 evicts the draining shade to the 6 m edge, no hit"
+  },
+  {
+   "name": "all-lit-continues",
+   "night": 1,
+   "scenario": "all-lit",
+   "ticks": 600,
+   "every": 60,
+   "proves": "All 5 lit does not end the night"
+  },
+  {
+   "name": "dawn-win",
+   "night": 1,
+   "scenario": "dawn-win",
+   "ticks": 100,
+   "proves": "3/5 lit at dawn -> won dawn_survived, score 3x(50+99) + 3x50 = 597"
+  },
+  {
+   "name": "dawn-lose",
+   "night": 1,
+   "scenario": "dawn-lose",
+   "ticks": 100,
+   "proves": "2/5 lit at dawn -> lost dawn"
+  }
+ ]
+}

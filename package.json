@@ -11,7 +11,7 @@
     "headless": "node dist/headless/cli.js",
     "test": "npm run build && vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "proof": "npm run build && node scripts/proof.mjs phase-2"
+    "proof": "npm run build && node scripts/proof.mjs phase-3"
   },
   "license": "MIT",
   "dependencies": {
