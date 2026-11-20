@@ -3,7 +3,9 @@
 Solo lab: a 3D game built across 4 phases. Correct-to-spec beats complex or pretty.
 
 ## Current phase
-**Phase 2 (TICKET-02, Test Contract v1.1)** — spec: [docs/specs/phase-2-TICKET-02.md](docs/specs/phase-2-TICKET-02.md). It REPLACES Phase 1 tuning + contract v1.0 where they differ (standard numbers, 3 nights, mandatory 12-step tick order, new snapshot fields, exact shade state names). Our decisions on its open points: [docs/notes/phase-2.md](docs/notes/phase-2.md).
+**Phase 3 (TICKET-03 change request, Test Contract v1.2)** — spec: [docs/specs/phase-3-TICKET-03.md](docs/specs/phase-3-TICKET-03.md). It REPLACES the [THAY THẾ] rules of Ticket-02: lantern fuel (integer units of 1/60), drain state, dawn-survival win, new scoring, growing capacity. Design: [docs/adr/0001-lantern-fuel-and-dawn-win.md](docs/adr/0001-lantern-fuel-and-dawn-win.md); breaking changes go in [CHANGELOG.md](CHANGELOG.md).
+- Obsolete tests: update or delete WITH a written reason (notes "Superseded"); never `skip` silently.
+Phase 2 (still in force unless replaced): [docs/specs/phase-2-TICKET-02.md](docs/specs/phase-2-TICKET-02.md), notes [docs/notes/phase-2.md](docs/notes/phase-2.md).
 History: Phase 1 spec [docs/specs/phase-1-PRD-0.md](docs/specs/phase-1-PRD-0.md) (superseded parts are listed in the Phase 2 notes).
 - The 12-step tick order in the ticket is mandatory; `Sim.step` must follow it step by step, with the step number in a comment.
 - Maps are data (`src/sim/maps.ts`), copied from ticket Part 2. Angles are measured from +X toward +Z: (r·cos a, y, r·sin a).
@@ -27,7 +29,7 @@ History: Phase 1 spec [docs/specs/phase-1-PRD-0.md](docs/specs/phase-1-PRD-0.md)
 ## Commands
 - `npm ci && npm run build` — install + compile headless to `dist/`
 - `npm test` — build + all tests (a Stop hook blocks finishing while this fails)
-- `npm run proof` — regenerate `docs/proof/phase-2/` from the real CLI using `scenarios/phase-2/cases.json` (CI diffs it). Earlier phases' proof is frozen at their tag.
+- `npm run proof` — regenerate `docs/proof/phase-3/` from the real CLI using `scenarios/phase-3/cases.json` (CI diffs it). Earlier phases' proof is frozen at their tag.
 - `npm run dev` — play in the browser · `npm run typecheck`
 - Headless: `node dist/headless/cli.js --seed 1 --night 1 --ticks 600 --out out/x.jsonl [--scenario f] [--inputs f]`
 
