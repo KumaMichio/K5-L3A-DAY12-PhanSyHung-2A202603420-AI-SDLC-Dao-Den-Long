@@ -73,7 +73,7 @@ npm test                     # 77 tests: rules of all 4 tickets, CLI, leaderboar
 npm run proof                # regenerates docs/proof/phase-4 from the real CLI (each case run twice, sha256)
 node dist/headless/cli.js --seed 1 --night 1 --ticks 600 --out out.jsonl [--scenario f.json] [--inputs f.json] [--snapshot-every 10]
 node scripts/bench.mjs --seed 42 --duration 30 --out bench.json     # bench_cmd (opens a 1280×720 window)
-node --expose-gc dist/headless/soak.js --seed 7 --nights 10 --out soak.json   # soak_cmd
+node --expose-gc --single-threaded dist/headless/soak.js --seed 7 --nights 10 --out soak.json   # soak_cmd
 node scripts/screenshots.mjs # README screenshots
 ```
 
@@ -84,7 +84,7 @@ node scripts/screenshots.mjs # README screenshots
   - If the bundled Chrome can't start (some Windows policies block it), it falls back to an installed Chrome/Edge, or `CHROME_PATH`.
 - **Our numbers** ([bench.json](bench.json), [soak.json](soak.json)) on a laptop (i5-9300H, Intel UHD 630 iGPU, Windows 11):
   - Bench: **avg 80.1 FPS, 1 % low 32.0 FPS, p95 20.5 ms, load 1.6 s, peak 549 MB** (with the detailed environment; 92.1 / 33.6 before it).
-  - Soak: **10 nights, 0 crashes, RSS 52 → 57.5 MB** (limit 1.2×).
+  - Soak: **10 nights, 0 crashes, RSS 42.7 → 45.9 MB (1.07×)** (limit 1.2×).
 - Evidence and notes per phase: [docs/proof/](docs/proof/) · [docs/notes/](docs/notes/) · ADR [0001](docs/adr/0001-lantern-fuel-and-dawn-win.md).
 
 ## Sáng tạo của tôi

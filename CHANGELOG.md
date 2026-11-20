@@ -15,6 +15,8 @@
 - `scripts/screenshots.mjs`, README screenshots, `docs/RETRO.md`.
 
 ### Changed / fixed
+- `soak_cmd` runs Node with `--single-threaded`: background JIT threads made RSS jitter push the ratio over 1.2 in 2 of 5 runs (no leak: heapUsed is flat). Now a stable 1.07.
+- Detailed environment (sky, stars, moon, cloud sea, grass, flowers, rocks, trees/palms, paths, tower roof), all instanced; camera avoids terrain.
 - Shades and fireflies are drawn with GPU instancing (about 10 draw calls instead of about 5 000). A zero-intensity PointLight per shade was removed (200 of them broke the WebGL shader limits).
 - Simulation: bench switches (off by default). Normal headless output is byte-identical to Phase 3 (proof).
 

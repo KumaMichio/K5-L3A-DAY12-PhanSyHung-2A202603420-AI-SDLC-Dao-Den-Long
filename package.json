@@ -15,7 +15,7 @@
     "build:headless": "tsc -p tsconfig.build.json",
     "start": "node scripts/play.mjs",
     "bench": "node scripts/bench.mjs --seed 42 --duration 30 --out bench.json",
-    "soak": "node --expose-gc dist/headless/soak.js --seed 7 --nights 10 --out soak.json"
+    "soak": "node --expose-gc --single-threaded dist/headless/soak.js --seed 7 --nights 10 --out soak.json"
   },
   "license": "MIT",
   "dependencies": {
