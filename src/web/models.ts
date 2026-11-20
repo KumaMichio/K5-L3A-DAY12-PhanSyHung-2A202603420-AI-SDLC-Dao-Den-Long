@@ -31,6 +31,10 @@ export const PALETTE = {
   shadeEye: 0x7a3cff,
 };
 
+/** Ticket-03 §6 "Bảng màu dễ phân biệt": shade rim/eyes #7A3CFF -> #00B3FF. */
+export const display = { colorblind: false };
+const shadeAccent = () => (display.colorblind ? 0x00b3ff : PALETTE.inkGlow);
+
 const std = (color: number, o: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...o });
 const basic = (color: number) => new THREE.MeshBasicMaterial({ color });
@@ -303,9 +307,14 @@ export class ShadeModel {
   private readonly shadow: THREE.Mesh;
   private readonly light: THREE.PointLight;
   private readonly phase: number;
+  private readonly drain: THREE.Sprite;
 
   constructor(phase: number) {
     this.phase = phase;
+    this.drain = glowSprite(0x7a5cff, 1.6); // a dim "sucking" glow while draining
+    this.drain.position.set(0, 0.3, 0.8);
+    this.drain.visible = false;
+    this.root.add(this.drain);
     const P = PALETTE;
     this.bodyMat = std(P.ink, { emissive: P.inkGlow, emissiveIntensity: 0.12, roughness: 0.45, side: THREE.DoubleSide, transparent: true });
     this.eyeMat = basic(P.shadeEye);
@@ -381,8 +390,10 @@ export class ShadeModel {
     this.bodyMat.opacity = stunned ? 0.6 : 1;
     this.bodyMat.color.setHex(stunned ? PALETTE.shadeStunned : PALETTE.ink);
     this.bodyMat.emissiveIntensity = stunned ? 0 : 0.12 + Math.sin(t * 3 + this.phase) * 0.05;
-    this.eyeMat.color.setHex(stunned ? 0xb9c6ff : PALETTE.shadeEye);
-    for (const g of this.eyeGlow) g.visible = !stunned;
+    this.eyeMat.color.setHex(stunned ? 0xb9c6ff : shadeAccent());
+    this.bodyMat.emissive.setHex(shadeAccent());
+    for (const g of this.eyeGlow) { g.visible = !stunned; g.material.color.setHex(shadeAccent()); }
+    this.drain.visible = state === 'drain';
     
     const s = stunned ? 0.82 + Math.sin(t * 18) * 0.03 : 1 + Math.sin(t * 5 + this.phase) * 0.04;
     this.body.scale.set(s, stunned ? s * 0.92 : s, s);
@@ -407,6 +418,11 @@ export class GreatLanternModel {
   private readonly light: THREE.PointLight;
   private readonly glow: THREE.Sprite;
   private readonly hang = new THREE.Group();
+  private readonly body: THREE.Mesh;
+  private readonly tears = new THREE.Group();
+  private readonly bar = new THREE.Group();
+  private readonly barFill: THREE.Mesh;
+  private readonly barMat: THREE.MeshBasicMaterial;
 
   constructor(pos: readonly number[]) {
     const P = PALETTE;
@@ -430,6 +446,27 @@ export class GreatLanternModel {
     const bodyY = -0.75;
     const body = mesh(new THREE.SphereGeometry(0.42, 22, 16), this.silk, 0, bodyY, 0);
     body.scale.y = 1.25;
+    this.body = body;
+    // torn paper (shape cue for "off", not colour): dark jagged slits on the silk
+    const tearMat = new THREE.MeshBasicMaterial({ color: 0x14100e, side: THREE.DoubleSide });
+    for (const [a, y, h] of [[0.3, 0.1, 0.35], [2.2, -0.15, 0.3], [4.1, 0.05, 0.4]]) {
+      const tear = new THREE.Mesh(new THREE.ConeGeometry(0.07, h, 3), tearMat);
+      tear.position.set(Math.sin(a) * 0.43, bodyY + y, Math.cos(a) * 0.43);
+      tear.lookAt(Math.sin(a) * 2, bodyY + y, Math.cos(a) * 2);
+      tear.rotateX(Math.PI / 2);
+      tear.scale.z = 0.15;
+      this.tears.add(tear);
+    }
+    this.hang.add(this.tears);
+    // fuel bar above the lantern (billboarded in update)
+    this.bar.position.set(0.88, 4.5, 0);
+    this.bar.add(mesh(new THREE.PlaneGeometry(1.3, 0.16), new THREE.MeshBasicMaterial({ color: 0x14182c, side: THREE.DoubleSide })));
+    this.barMat = new THREE.MeshBasicMaterial({ color: PALETTE.lanternLit, side: THREE.DoubleSide });
+    const fillGeo = new THREE.PlaneGeometry(1.24, 0.1);
+    fillGeo.translate(0.62, 0, 0);
+    this.barFill = mesh(fillGeo, this.barMat, -0.62, 0, 0.005);
+    this.bar.add(this.barFill);
+    this.root.add(this.bar);
     this.hang.add(mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 4), std(P.umber), 0, -0.12, 0), body);
     for (let k = 0; k < 6; k++) {
       const rib = mesh(new THREE.TorusGeometry(0.425, 0.011, 4, 32), wood, 0, bodyY, 0);
@@ -452,7 +489,24 @@ export class GreatLanternModel {
     this.root.add(this.hang);
   }
 
-  update(t: number, lit: boolean, fill: number): void {
+  update(t: number, lit: boolean, fill: number, fuel = 100, low = false, cam?: THREE.Camera): void {
+    // Ticket-03: fuel bar on lit lanterns; below 30 the lantern and bar blink slowly (1 Hz)
+    const blinkOff = lit && low && Math.floor(t * 2) % 2 === 1;
+    this.bar.visible = lit;
+    this.barFill.scale.x = Math.max(0.001, fuel / 100);
+    this.barMat.color.setHex(low ? (display.colorblind ? 0xffffff : 0xff5a5f) : PALETTE.lanternLit);
+    this.barMat.opacity = blinkOff ? 0.25 : 1;
+    this.barMat.transparent = true;
+    if (cam) this.bar.quaternion.copy(cam.quaternion);
+    // off = squashed 20% + torn paper (distinguishable without colour)
+    this.body.scale.set(1, lit ? 1.25 : 1.25 * 0.8, 1);
+    this.tears.visible = !lit;
+    if (blinkOff) {
+      this.silk.emissiveIntensity = 0.3;
+      this.light.intensity = 6;
+      this.glow.visible = false;
+      return;
+    }
     this.silk.emissiveIntensity = lit ? 1.6 + Math.sin(t * 3) * 0.1 : 0.5 * fill;
     this.silk.color.setHex(lit ? PALETTE.lanternLit : PALETTE.lanternOff);
     this.light.intensity = lit ? 40 : 5 * fill;

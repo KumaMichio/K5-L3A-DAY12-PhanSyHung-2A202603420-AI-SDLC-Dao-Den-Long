@@ -14,7 +14,10 @@
     #flames .off { color: #4a4f63; text-shadow: none; }
     #clock { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums;
              background: var(--panel); padding: 4px 16px; border-radius: 10px; }
-    #clock.danger { color: var(--danger); animation: blink 1s steps(2, start) infinite; }
+    #clock.danger, .warn { color: var(--danger); }
+    #clock.danger { animation: blink 1s steps(2, start) infinite; }
+    body.cb { --danger: #FFFFFF; } /* Ticket-03 §6: UI warnings white + ⚠ */
+    #carry { position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: .85; }
     @keyframes blink { to { visibility: hidden; } }
     #topright { position: absolute; top: 14px; right: 16px; text-align: right; font-size: 18px; background: var(--panel); padding: 6px 12px; border-radius: 10px; }
     #topright b { color: var(--gold); font-size: 22px; }
@@ -55,6 +58,7 @@
     <div id="windwarn" class="hidden">🍃 Gió sắp nổi…</div>
     <div id="prompt" class="hidden"></div>
     <div id="arrow" class="hidden"></div>
+    <div id="carry"></div>
     <div id="bar"></div>
     <div id="cds">
       <div class="cd" id="cd-dash"><span>Lướt<br>Shift</span></div>

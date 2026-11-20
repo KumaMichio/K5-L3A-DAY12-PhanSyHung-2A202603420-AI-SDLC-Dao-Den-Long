@@ -8,23 +8,32 @@ import { NIGHTS } from '../sim/maps.js';
 import { Sim, TICK_HZ, distXZ } from '../sim/sim.js';
 import type { InputState, Tuning, Vec3 } from '../sim/types.js';
 import { Audio } from './audio.js';
-import { CharmModel, DrifterModel, GreatLanternModel, MayModel, MoteModel, ShadeModel } from './models.js';
+import { CharmModel, DrifterModel, GreatLanternModel, MayModel, MoteModel, ShadeModel, display } from './models.js';
 import { FOG, SKY, WindLeaves, buildWorld } from './world.js';
 
 const T = contract.tuning as Tuning;
 const $ = (id: string) => document.getElementById(id)!;
 
 // ------------------------------------------------------------------ settings (saved between sessions)
-interface Settings { volume: number; sensitivity: number }
+interface Settings { volume: number; sensitivity: number; colorblind: boolean }
 function loadSettings(): Settings {
   try {
     const s = JSON.parse(localStorage.getItem('ddl-settings') ?? '{}');
-    return { volume: typeof s.volume === 'number' ? s.volume : 0.7, sensitivity: typeof s.sensitivity === 'number' ? s.sensitivity : 1 };
+    return {
+      volume: typeof s.volume === 'number' ? s.volume : 0.7,
+      sensitivity: typeof s.sensitivity === 'number' ? s.sensitivity : 1,
+      colorblind: s.colorblind === true,
+    };
   } catch {
-    return { volume: 0.7, sensitivity: 1 };
+    return { volume: 0.7, sensitivity: 1, colorblind: false };
   }
 }
 const settings = loadSettings();
+function applyColorblind(): void {
+  display.colorblind = settings.colorblind;
+  document.body.classList.toggle('cb', settings.colorblind);
+}
+applyColorblind();
 function saveSettings(): void {
   try { localStorage.setItem('ddl-settings', JSON.stringify(settings)); } catch { /* private mode: keep in memory */ }
 }
@@ -142,7 +151,7 @@ function showIntro(): void {
   mode = 'intro';
   screen(`<h2>Đêm ${night}</h2><h1>${NIGHTS[night].name}</h1>
     <p class="quote">Ông Đăng: “${INTRO[night]}”</p>
-    <p>Thắp ${sim.lanterns.length} đèn · ${Math.round(sim.timeLeft)} giây trước bình minh</p>
+    <p>Giữ ít nhất <b>${sim.litNeeded}/${sim.lanterns.length}</b> đèn sáng tới bình minh (${Math.round(sim.timeLeft)} giây). Đèn cạn dầu sẽ tắt; nạp đom đóm để châm dầu.</p>
     <button id="b-go">Vào đêm</button>`);
   on('b-go', () => { mode = 'playing'; screen(null); });
 }
@@ -171,9 +180,11 @@ function showSettings(back: () => void): void {
   screen(`<h1>Cài đặt</h1>
     <label>Âm lượng <input id="s-vol" type="range" min="0" max="1" step="0.05" value="${settings.volume}"></label>
     <label>Độ nhạy chuột <input id="s-sens" type="range" min="0.2" max="3" step="0.1" value="${settings.sensitivity}"></label>
+    <label>Bảng màu dễ phân biệt <input id="s-cb" type="checkbox" ${settings.colorblind ? 'checked' : ''}></label>
     <button id="b-back">Quay lại</button>`);
   ($('s-vol') as HTMLInputElement).oninput = (e) => { settings.volume = Number((e.target as HTMLInputElement).value); audio.setVolume(settings.volume); saveSettings(); };
   ($('s-sens') as HTMLInputElement).oninput = (e) => { settings.sensitivity = Number((e.target as HTMLInputElement).value); saveSettings(); };
+  ($('s-cb') as HTMLInputElement).onchange = (e) => { settings.colorblind = (e.target as HTMLInputElement).checked; applyColorblind(); saveSettings(); };
   on('b-back', () => { mode = prev === 'settings' ? 'menu' : prev; back(); });
 }
 
@@ -183,7 +194,7 @@ function showResult(won: boolean, reason: string): void {
     nightScores[night] = sim.score;
     totalScore += sim.score;
   }
-  const why = { all_lit: 'Mọi Đèn Lồng Lớn đã sáng', dawn: 'Trời đã sáng mà đảo vẫn tối', no_flames: 'Mây đã hết lửa' }[reason] ?? '';
+  const why = { dawn_survived: `Đảo còn sáng lúc bình minh (${sim.litCount}/${sim.lanterns.length} đèn)`, dawn: `Bình minh đến khi chỉ còn ${sim.litCount} đèn sáng (cần ${sim.litNeeded})`, no_flames: 'Mây đã hết lửa' }[reason] ?? '';
   if (won && night === 3) return showDawn();
   screen(won
     ? `<h1>Đêm ${night} hoàn thành!</h1><p>${why}</p><p>Điểm đêm này: <span class="score">${sim.score}</span></p><p>Tổng điểm: <b>${totalScore}</b></p>
@@ -244,7 +255,9 @@ function say(text: string): void { $('toast').textContent = text; toastTimer = 2
 function onEvent(name: string, data: Record<string, unknown>): void {
   switch (name) {
     case 'mote_picked': audio.play('pickup'); break;
-    case 'lantern_lit': audio.play('lit'); say(`Đèn ${data.lantern_id} đã sáng!`); break;
+    case 'lantern_lit': audio.play('lit'); say(data.relight ? `Đèn ${data.lantern_id} sáng lại!` : `Đèn ${data.lantern_id} đã sáng!`); break;
+    case 'refuel': audio.play('charm'); say(`Châm dầu đèn ${data.lantern_id}: ${data.fuel}`); break;
+    case 'lantern_out': audio.play('lose'); say(`Đèn ${data.lantern_id} đã cạn dầu và tắt!`); break;
     case 'dash': audio.play('dash'); break;
     case 'charm_picked': audio.play('charm'); say('Bùa Gió! Chạy nhanh hơn, lướt không cần chờ'); break;
     case 'drifter_steal': audio.play('steal'); say(`Gió Lạc giật mất ${data.amount} đom đóm! Tỏa sáng để lấy lại`); break;
@@ -271,11 +284,14 @@ function onEvent(name: string, data: Record<string, unknown>): void {
 
 // ------------------------------------------------------------------ HUD
 const barCells: HTMLDivElement[] = [];
-for (let i = 0; i < T.carry_capacity; i++) {
-  const c = document.createElement('div');
-  c.className = 'cell';
-  $('bar').appendChild(c);
-  barCells.push(c);
+function ensureCells(n: number): void {
+  while (barCells.length < n) {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    $('bar').appendChild(c);
+    barCells.push(c);
+  }
+  barCells.forEach((c, i) => c.classList.toggle('hidden', i >= n));
 }
 let lastSecond = -1;
 let wasWarning = false;
@@ -292,29 +308,34 @@ function updateHud(): void {
   $('flames').innerHTML = Array.from({ length: T.flames }, (_, i) => (i < p.flames ? '🔥' : '<span class="off">●</span>')).join('');
   const secs = Math.ceil(sim.timeLeft);
   const clock = $('clock');
-  clock.textContent = `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+  clock.textContent = `${secs <= 30 && settings.colorblind ? '⚠ ' : ''}${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
   clock.classList.toggle('danger', secs <= 30);
   if (secs !== lastSecond) {
     if (secs <= 10 && secs > 0 && lastSecond !== -1 && mode === 'playing') audio.play('tick');
     lastSecond = secs;
   }
   const lit = sim.lanterns.filter((l) => l.lit).length;
-  $('topright').innerHTML = `Đèn <b>${lit}/${sim.lanterns.length}</b><br>Điểm <b>${sim.score}</b>${totalScore ? `<br><small>Tổng ${totalScore}</small>` : ''}`;
+  const tooFew = lit < sim.litNeeded;
+  $('topright').innerHTML = `Đèn <b class="${tooFew ? 'warn' : ''}">${tooFew && settings.colorblind ? '⚠ ' : ''}${lit}/${sim.lanterns.length}</b> <small>(cần ${sim.litNeeded})</small><br>Điểm <b>${sim.score}</b>${totalScore ? `<br><small>Tổng ${totalScore}</small>` : ''}`;
+  ensureCells(sim.capacity);
   barCells.forEach((c, i) => c.classList.toggle('on', i < p.carried));
+  $('carry').textContent = `${p.carried}/${sim.capacity}`;
   setCd('cd-dash', p.charm > 0 ? 0 : p.dashCd, Math.round(T.dash_cooldown_s * TICK_HZ));
   setCd('cd-pulse', p.pulseCd, Math.round(T.pulse_cooldown_s * TICK_HZ));
 
   // nearest unlit lantern: interact prompt + off-screen arrow
-  let nearest: { id: string; pos: Vec3; deposited: number } | null = null;
+  let nearest: { id: string; pos: Vec3; deposited: number; lit: boolean; fuel: number; everLit: boolean } | null = null;
   let nd = Infinity;
   for (const l of sim.lanterns) {
-    if (l.lit) continue;
+    if (l.lit && l.fuel >= T.fuel_max * 60) continue;
     const d = distXZ(l.pos, p.pos);
     if (d < nd) { nd = d; nearest = l; }
   }
   const prompt = $('prompt');
   if (nearest && nd <= T.interact_radius) {
-    prompt.textContent = `E — Nạp ánh sáng (${nearest.deposited}/${T.lantern_cost})`;
+    prompt.textContent = nearest.lit
+      ? `E — Châm dầu (${Math.floor(nearest.fuel / 60)}/${T.fuel_max})`
+      : `E — Nạp ánh sáng (${nearest.deposited}/${nearest.everLit ? T.relight_cost : T.lantern_cost})`;
     prompt.classList.remove('hidden');
   } else prompt.classList.add('hidden');
 
@@ -374,7 +395,7 @@ function sync(dt: number, t: number): void {
 
   let lit = 0;
   sim.lanterns.forEach((l, i) => {
-    lanterns[i].update(t, l.lit, l.lit ? 1 : l.deposited / T.lantern_cost);
+    lanterns[i].update(t, l.lit, l.lit ? 1 : l.deposited / (l.everLit ? T.relight_cost : T.lantern_cost), l.fuel / 60, sim.weak(l), camera);
     ((lanterns[i].root.userData.ring as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = l.lit ? 0.35 : 0;
     if (l.lit) lit++;
   });
