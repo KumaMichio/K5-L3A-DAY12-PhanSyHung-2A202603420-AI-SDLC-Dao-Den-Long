@@ -27,7 +27,7 @@ History: Phase 1 spec [docs/specs/phase-1-PRD-0.md](docs/specs/phase-1-PRD-0.md)
 ## Commands
 - `npm ci && npm run build` — install + compile headless to `dist/`
 - `npm test` — build + all tests (a Stop hook blocks finishing while this fails)
-- `npm run proof` — regenerate `docs/proof/phase-1/` from the real CLI (CI diffs it against the committed copy)
+- `npm run proof` — regenerate `docs/proof/phase-2/` from the real CLI using `scenarios/phase-2/cases.json` (CI diffs it). Earlier phases' proof is frozen at their tag.
 - `npm run dev` — play in the browser · `npm run typecheck`
 - Headless: `node dist/headless/cli.js --seed 1 --night 1 --ticks 600 --out out/x.jsonl [--scenario f] [--inputs f]`
 
