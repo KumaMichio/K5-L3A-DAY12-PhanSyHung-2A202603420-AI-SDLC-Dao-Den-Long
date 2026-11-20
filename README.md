@@ -1,6 +1,6 @@
 # Đảo Đèn Lồng
 
-> **Video demo:** _link added with Release v1.0.0_ · **Release:** [v1.0.0](../../releases/tag/v1.0.0) · Specs: [Phase 1](docs/specs/phase-1-PRD-0.md) · [Phase 2](docs/specs/phase-2-TICKET-02.md) · [Phase 3](docs/specs/phase-3-TICKET-03.md) · [Phase 4](docs/specs/phase-4-TICKET-04.md) · [CHANGELOG](CHANGELOG.md) · [Retro](docs/RETRO.md) · Lab docs: [docs/lab/](docs/lab/README.md)
+> **Video demo:** [docs/demo/demo.mp4](docs/demo/demo.mp4) (1:55, also attached to [Release v1.0.0](../../releases/tag/v1.0.0); gameplay input in the video is scripted by the recording tool) · **Release:** [v1.0.0](../../releases/tag/v1.0.0) · Specs: [Phase 1](docs/specs/phase-1-PRD-0.md) · [Phase 2](docs/specs/phase-2-TICKET-02.md) · [Phase 3](docs/specs/phase-3-TICKET-03.md) · [Phase 4](docs/specs/phase-4-TICKET-04.md) · [CHANGELOG](CHANGELOG.md) · [Retro](docs/RETRO.md) · Lab docs: [docs/lab/](docs/lab/README.md)
 
 A small 3D third-person night game. You are **Mây**, a young lantern keeper in a nón lá. Collect fireflies, light the Great Lanterns and keep them fuelled, and drive back the Ink Shades (Bóng Mực) that drain weak lanterns. **Keep enough of the island lit until dawn** across three nights: Đảo Bến, Đảo Cau, Đảo Chuông.
 

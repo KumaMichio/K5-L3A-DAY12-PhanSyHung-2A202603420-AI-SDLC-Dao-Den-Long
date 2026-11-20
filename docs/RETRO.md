@@ -40,12 +40,17 @@
 
 ## 5. Tokens / cost
 
-| Phase | Estimated tokens | Estimated cost | Notes |
-|---|---|---|---|
-| 1 | _fill in from the Claude usage page_ | | |
-| 2 | | | largest phase (sim rewrite + web) |
-| 3 | | | |
-| 4 | | | |
+> **Estimate, not a measurement.** The agent has no access to the account's usage meter. These numbers were estimated by the agent from the length of the session: about how many tool calls each phase took, the size of the files written, and the context re-sent on each call. Replace them with the real figures from the Claude usage page if you have them.
+
+| Phase | Agent turns (tool calls) | Output tokens (est.) | Input tokens incl. cached context (est.) | Notes |
+|---|---|---|---|---|
+| 1 | ~45 | ~40 k | ~3–5 M | sim + CLI + tests + web; Stop-hook debugging |
+| 2 | ~60 | ~90 k | ~10–15 M | largest code volume (sim rewrite, maps, web flow/HUD/audio) |
+| 3 | ~30 | ~40 k | ~6–9 M | targeted patches; ADR first |
+| 4 | ~90 | ~110 k | ~15–20 M | bench debugging (7 → 92 FPS), soak memory jitter, release, video |
+| **Total** | **~225** | **~280 k** | **~35–50 M** | over 90 % of input is cache reads of the growing context |
+
+Cost: the work ran on a Claude subscription plan, so there was no per-token bill. Most of the input was cheap cache reads; the main cost driver was context size late in the session.
 
 **How tokens were saved:**
 - Specs read once and stored in the repo.
