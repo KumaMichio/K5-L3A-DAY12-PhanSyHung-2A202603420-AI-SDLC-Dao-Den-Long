@@ -97,7 +97,7 @@ export function parseScenario(raw: unknown, lanternIds: string[]): Scenario {
     if (!isObj(p)) throw new FormatError('scenario.player: expected object');
     s.player = {};
     if (p.pos !== undefined) s.player.pos = vec3(p.pos, 'scenario.player.pos');
-    for (const k of ['carried', 'flames', 'invuln_ticks', 'dash_cd_ticks', 'pulse_cd_ticks', 'charm_ticks'] as const) {
+    for (const k of ['carried', 'flames', 'invuln_ticks', 'dash_cd_ticks', 'pulse_cd_ticks', 'charm_ticks', 'successful_lights'] as const) {
       if (p[k] !== undefined) s.player[k] = nonNegInt(p[k], `scenario.player.${k}`);
     }
   }
@@ -124,7 +124,11 @@ export function parseScenario(raw: unknown, lanternIds: string[]): Scenario {
     s.shades = arr(raw.shades, 'scenario.shades').map((sh, i) => {
       const w = `scenario.shades[${i}]`;
       if (!isObj(sh)) throw new FormatError(`${w}: expected object`);
-      const out: { id?: string; pos: Vec3; state?: ShadeState; state_ticks_left?: number } = { pos: vec3(sh.pos, `${w}.pos`) };
+      const out: { id?: string; pos: Vec3; state?: ShadeState; state_ticks_left?: number; target_lantern_id?: string } = { pos: vec3(sh.pos, `${w}.pos`) };
+      if (sh.target_lantern_id !== undefined) {
+        if (typeof sh.target_lantern_id !== 'string' || !lanternIds.includes(sh.target_lantern_id)) throw new FormatError(`${w}.target_lantern_id: expected one of ${lanternIds.join(', ')}`);
+        out.target_lantern_id = sh.target_lantern_id;
+      }
       out.id = optId(sh.id, ids, `${w}.id`);
       if (sh.state !== undefined) out.state = oneOf(sh.state, SHADE_STATES, `${w}.state`);
       if (sh.state_ticks_left !== undefined) out.state_ticks_left = nonNegInt(sh.state_ticks_left, `${w}.state_ticks_left`);
@@ -160,7 +164,12 @@ export function parseScenario(raw: unknown, lanternIds: string[]): Scenario {
     s.lanterns = arr(raw.lanterns, 'scenario.lanterns').map((l, i) => {
       const w = `scenario.lanterns[${i}]`;
       if (!isObj(l) || typeof l.id !== 'string' || !valid.has(l.id)) throw new FormatError(`${w}.id: expected one of ${lanternIds.join(', ')}`);
-      const out: { id: string; pos?: Vec3; lit?: boolean; deposited?: number } = { id: l.id };
+      const out: { id: string; pos?: Vec3; lit?: boolean; deposited?: number; fuel?: number; ever_lit?: boolean } = { id: l.id };
+      if (l.fuel !== undefined) {
+        if (!isNum(l.fuel) || l.fuel < 0) throw new FormatError(`${w}.fuel: expected number >= 0`);
+        out.fuel = l.fuel;
+      }
+      if (l.ever_lit !== undefined) out.ever_lit = bool(l.ever_lit, `${w}.ever_lit`);
       if (l.pos !== undefined) out.pos = vec3(l.pos, `${w}.pos`);
       if (l.lit !== undefined) out.lit = bool(l.lit, `${w}.lit`);
       if (l.deposited !== undefined) out.deposited = nonNegInt(l.deposited, `${w}.deposited`);
