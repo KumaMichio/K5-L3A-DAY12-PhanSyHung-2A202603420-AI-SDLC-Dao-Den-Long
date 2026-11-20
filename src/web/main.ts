@@ -12,6 +12,7 @@ import { Sim, TICK_HZ, distXZ } from '../sim/sim.js';
 import type { InputState, Tuning, Vec3 } from '../sim/types.js';
 import { Audio } from './audio.js';
 import { CharmModel, DrifterModel, GreatLanternModel, MayModel, MoteSwarm, ShadeCrowd, display } from './models.js';
+import { buildSky } from './decor.js';
 import { FOG, SKY, WindLeaves, buildWorld } from './world.js';
 
 const T = contract.tuning as Tuning;
@@ -73,7 +74,7 @@ const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 40
 const ambient = new THREE.HemisphereLight(0x8a9ad8, 0x1b2350, 0.15);
 const moon = new THREE.DirectionalLight(0x9aa8ff, 0.3);
 moon.position.set(-20, 40, 10);
-scene.add(ambient, moon);
+scene.add(ambient, moon, buildSky()); // gradient dome, stars, moon
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
@@ -567,7 +568,14 @@ function sync(dt: number, t: number): void {
 
   if (mode === 'bench') return; // the bench camera is set by the bench loop
   const camY = p.respawnWait > 0 ? sim.map.start[1] : p.pos[1];
-  camera.position.set(p.pos[0] - Math.sin(camYaw) * 8, camY + 4.5, p.pos[2] - Math.cos(camYaw) * 8);
+  // keep the camera out of terrain (Night 3 tiers, tower): shorten the boom before any higher ground
+  let boom = 8;
+  for (let d = 0.5; d <= 8; d += 0.5) {
+    const g = sim.groundAt(p.pos[0] - Math.sin(camYaw) * d, p.pos[2] - Math.cos(camYaw) * d);
+    if (g !== null && g > camY + 0.5) { boom = Math.max(1.5, d - 0.8); break; }
+  }
+  const lift = boom < 8 ? (8 - boom) * 0.35 : 0;
+  camera.position.set(p.pos[0] - Math.sin(camYaw) * boom, camY + 4.5 + lift, p.pos[2] - Math.cos(camYaw) * boom);
   if (shake > 0) {
     camera.position.x += (Math.random() - 0.5) * shake;
     camera.position.y += (Math.random() - 0.5) * shake;

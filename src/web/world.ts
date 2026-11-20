@@ -1,6 +1,7 @@
 /** Terrain meshes per night, built from the same map data the sim uses (src/sim/maps.ts). Visual only. */
 import * as THREE from 'three';
 import type { NightDef } from '../sim/maps.js';
+import { buildCloudSea, buildGroundDetail, buildUnderside } from './decor.js';
 import { PALETTE, glowSprite } from './models.js';
 
 export const SKY = 0x0e1430;
@@ -9,15 +10,36 @@ const GRASS = 0x2f5d50;
 const SAND = 0xc9b48a;
 const WOOD = 0x6b4a2f;
 const CLOUD_SEA = 0x12384a;
-const CLIFF = 0x3d4a52;
+const CLIFF = 0x4f5c66; // tier walls: light enough to read as rock under the night ambient
 
 const mat = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 1 });
+
+/** Rock wall material: horizontal strata (canvas texture) + a faint emissive so cliffs read at night. */
+let strata: THREE.Texture | null = null;
+function cliffMat(): THREE.MeshStandardMaterial {
+  if (!strata) {
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 128;
+    const g = c.getContext('2d')!;
+    for (let y = 0; y < 128; y += 4) {
+      const v = 70 + ((y * 37) % 23) + (y % 16 === 0 ? -18 : 0);
+      g.fillStyle = `rgb(${v}, ${v + 10}, ${v + 18})`;
+      g.fillRect(0, y, 64, 4);
+    }
+    strata = new THREE.CanvasTexture(c);
+    strata.wrapS = strata.wrapT = THREE.RepeatWrapping;
+    strata.repeat.set(8, 1);
+    strata.colorSpace = THREE.SRGBColorSpace;
+  }
+  return new THREE.MeshStandardMaterial({ color: CLIFF, map: strata, roughness: 1, emissive: 0x161c26, emissiveIntensity: 1 });
+}
 
 /** Disc island: grass top at y = top, sandy rim, rocky underside. */
 function island(cx: number, cz: number, r: number, top = 0, depth = 3): THREE.Group {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.6, depth + 4, 48), mat(CLIFF));
-  body.position.set(cx, top - (depth + 4) / 2, cz);
+  void depth;
+  const body = buildUnderside(cx, cz, r, top, Math.round(cx * 7 + r)); // jagged rock + hanging roots
   const grass = new THREE.Mesh(new THREE.CircleGeometry(r - 1.2, 48), mat(GRASS));
   grass.rotation.x = -Math.PI / 2;
   grass.position.set(cx, top + 0.01, cz);
@@ -56,43 +78,61 @@ function halfAnnulus(r0: number, r1: number, h: number): THREE.Group {
   shape.absarc(0, 0, r1, Math.PI, 2 * Math.PI, false);
   shape.absarc(0, 0, r0, 2 * Math.PI, Math.PI, true);
   const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, curveSegments: 48 });
-  const body = new THREE.Mesh(geo, [mat(GRASS), mat(CLIFF)]);
+  const body = new THREE.Mesh(geo, [mat(GRASS), cliffMat()]);
   body.rotation.x = -Math.PI / 2;
   return new THREE.Group().add(body);
 }
 
 export function buildWorld(map: NightDef): THREE.Group {
   const world = new THREE.Group();
-  const sea = new THREE.Mesh(new THREE.CircleGeometry(400, 64), new THREE.MeshStandardMaterial({ color: CLOUD_SEA, roughness: 1 }));
-  sea.rotation.x = -Math.PI / 2;
-  sea.position.y = -8;
-  world.add(sea);
+  void CLOUD_SEA;
+  world.add(buildCloudSea(map));
 
   if (map.night === 1) world.add(island(0, 0, 40));
   if (map.night === 2) {
     world.add(island(0, 0, 28), island(70, 0, 28));
     const bridge = new THREE.Group();
     for (let x = 26.25; x < 44; x += 0.5) {
-      const plank = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, 4), mat(WOOD));
-      plank.position.set(x, -0.06, 0);
+      const plank = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 4, 6), mat(x % 1 < 0.5 ? 0x8a6a3c : 0x7a5c33)); // bamboo poles
+      plank.rotation.x = Math.PI / 2;
+      plank.position.set(x, -0.11, 0);
       bridge.add(plank);
+    }
+    for (const x of [26, 44]) for (const z of [-2.1, 2.1]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.6, 6), mat(0x8a6a3c));
+      post.position.set(x, 0.3, z);
+      bridge.add(post);
     }
     world.add(bridge);
   }
   if (map.night === 3) {
     world.add(island(0, 0, 45));
     world.add(halfAnnulus(12, 24, 3));
-    const t2 = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 6, 40), [mat(CLIFF), mat(GRASS), mat(GRASS)]);
+    const t2 = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 6, 40), [cliffMat(), mat(GRASS), mat(GRASS)]);
     t2.position.y = 3;
     const tower = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 8, 24), mat(0x8a7f74));
     tower.position.y = 10;
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 2.2, 8), mat(WOOD));
-    roof.position.y = 15.1;
+    const roof = new THREE.Group();
+    for (const [rad, h, y] of [[3.1, 1.3, 14.6], [2.2, 1.6, 15.7]] as const) {
+      const tier = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 8), mat(0x5a2f22));
+      tier.position.y = y;
+      roof.add(tier);
+    }
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshStandardMaterial({ color: PALETTE.gold, emissive: PALETTE.gold, emissiveIntensity: 0.4 }));
+    finial.position.y = 16.7;
+    roof.add(finial);
+    for (let i = 0; i < 4; i++) { // open belfry pillars
+      const a = (i * Math.PI) / 2 + Math.PI / 4;
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.6, 0.35), mat(0x8a7f74));
+      pillar.position.set(Math.cos(a) * 1.75, 13.4, Math.sin(a) * 1.75);
+      roof.add(pillar);
+    }
     const bell = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 12, 0, Math.PI * 2, 0, Math.PI / 1.6), new THREE.MeshStandardMaterial({ color: PALETTE.gold, metalness: 0.6, roughness: 0.35 }));
     bell.position.y = 13.4;
     world.add(t2, tower, roof, bell, ramp((30 * Math.PI) / 180), ramp((150 * Math.PI) / 180));
   }
   for (const p of map.pads) world.add(pad(p.pos));
+  world.add(buildGroundDetail(map)); // grass, flowers, rocks, trees/palms, stone paths
   return world;
 }
 
