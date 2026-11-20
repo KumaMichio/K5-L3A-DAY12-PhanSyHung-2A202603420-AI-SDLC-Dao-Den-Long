@@ -12,7 +12,8 @@ describe('contract v1.1 output', () => {
     expect(Object.keys(s)).toEqual(['type', 'tick', 'sim_tick', 'night', 'state', 'time_left_s', 'score', 'wind', 'player', 'lanterns', 'shades', 'motes_active', 'motes', 'drifters', 'charms']);
     expect(s.night).toBe(2);
     expect(s.wind).toEqual({ active: false, dir_deg: 0 });
-    expect(Object.keys(s.player)).toEqual(['pos', 'vel', 'grounded', 'flames', 'carried', 'invuln', 'dash_cd_s', 'pulse_cd_s', 'charm_s']);
+    // v1.2 adds player.capacity (Ticket-03 §7)
+    expect(Object.keys(s.player)).toEqual(['pos', 'vel', 'grounded', 'flames', 'carried', 'capacity', 'invuln', 'dash_cd_s', 'pulse_cd_s', 'charm_s']);
     expect(s.player.grounded).toBe(true);
     expect(s.motes[0]).toEqual({ id: 'M1', pos: expect.any(Array), kind: 'random', ttl_s: null });
     expect(s.charms).toEqual([{ id: 'C1', available: true, respawn_s: 0 }]);
@@ -109,7 +110,8 @@ describe('pause', () => {
     expect(r.events.map((e) => [e.tick, e.name])).toEqual([[11, 'paused'], [21, 'resumed']]);
     expect(r.at(15)).toMatchObject({ state: 'paused', sim_tick: 10 });
     expect(r.at(15).player.pos).toEqual(r.at(11).player.pos);
-    expect(r.at(30)).toMatchObject({ state: 'playing', sim_tick: 20, time_left_s: 300 - 20 / 60 > 0 ? Math.round((300 - 20 / 60) * 1000) / 1000 : 0 });
+    // SUPERSEDED (Ticket-03 §3): Night 1 lasts 240 s (was 300)
+    expect(r.at(30)).toMatchObject({ state: 'playing', sim_tick: 20, time_left_s: Math.round((240 - 20 / 60) * 1000) / 1000 });
   });
 });
 

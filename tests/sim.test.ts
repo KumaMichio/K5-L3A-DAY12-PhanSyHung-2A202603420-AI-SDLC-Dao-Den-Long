@@ -63,12 +63,13 @@ describe('fireflies & lanterns', () => {
     expect(r.at(1).motes_active).toBe(3);
   });
 
-  it('interact deposits min(carried, missing) and lights at lantern_cost (+10/firefly +100/lantern)', () => {
+  it('interact deposits min(carried, missing) and lights at lantern_cost (+5/firefly +100/first light)', () => {
+    // SUPERSEDED (Ticket-03 §5): +10/firefly -> +5; lantern_lit gains "relight".
     const sc = quiet({ player: { carried: 12 }, lanterns: [{ id: 'L1', pos: [0, 0, T.interact_radius] }] });
     const r = run(sc, [{ tick: 3, interact: true }], 10);
     expect(r.events.map((e) => [e.tick, e.name, e.data])).toEqual([
       [4, 'deposit', { lantern_id: 'L1', amount: 10, deposited: 10 }],
-      [4, 'lantern_lit', { lantern_id: 'L1' }],
+      [4, 'lantern_lit', { lantern_id: 'L1', relight: false }],
     ]);
     expect(r.end.score).toBe(10 * T.score.per_mote + T.score.per_lantern);
     expect(r.at(10).player.carried).toBe(2);
@@ -89,15 +90,12 @@ describe('fireflies & lanterns', () => {
     expect(run(far, [{ tick: 0, interact: true }], 1).events).toEqual([]);
   });
 
-  it('lighting the last lantern wins with time x2 + flame bonus; pre-lit lanterns score nothing', () => {
-    const lit = N1.slice(1).map((id) => ({ id, lit: true }));
-    const sc = quiet({ player: { carried: 10 }, lanterns: [...lit, { id: 'L1', pos: [0, 0, 1] }], time_left_s: 100 });
-    const r = run(sc, [{ tick: 59, interact: true }], 600);
-    expect(r.events.at(-1)).toEqual({ type: 'event', tick: 60, name: 'game_over', data: { result: 'won', reason: 'all_lit' } });
-    expect(r.end).toEqual({ type: 'end', ticks: 60, state: 'won', score: 100 + 100 + 99 * 2 + 3 * 50 });
-  });
+  // DELETED (Ticket-03 §3): "lighting the last lantern wins with time x2 + flame bonus".
+  // Lighting every lantern no longer ends the night and the time bonus is gone; the replacement
+  // tests ("all lit does not end the night", dawn win/lose, dawn bonus) live in tests/phase3.test.ts.
 
-  it('winning on the very tick time runs out is still a win', () => {
+  it('at dawn with every lantern lit Mây wins (dawn_survived)', () => {
+    // SUPERSEDED (Ticket-03 §3): was "all_lit on the dawn tick"; same setup now ends as dawn_survived.
     const lit = N1.slice(1).map((id) => ({ id, lit: true }));
     const sc = quiet({ player: { carried: 10 }, lanterns: [...lit, { id: 'L1', pos: [0, 0, 1] }], time_left_s: 1 });
     const r = run(sc, [{ tick: 59, interact: true }], 600);
