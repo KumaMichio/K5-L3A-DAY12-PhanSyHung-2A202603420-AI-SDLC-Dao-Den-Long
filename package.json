@@ -1,17 +1,21 @@
 {
   "name": "dao-den-long",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Đảo Đèn Lồng — 3D lantern-keeper game (Day 12 AI SDLC lab)",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "dev": "vite",
     "build:web": "vite build",
     "headless": "node dist/headless/cli.js",
-    "test": "npm run build && vitest run",
+    "test": "npm run build:headless && vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "proof": "npm run build && node scripts/proof.mjs phase-3"
+    "proof": "npm run build:headless && node scripts/proof.mjs phase-4",
+    "build:headless": "tsc -p tsconfig.build.json",
+    "start": "node scripts/play.mjs",
+    "bench": "node scripts/bench.mjs --seed 42 --duration 30 --out bench.json",
+    "soak": "node --expose-gc dist/headless/soak.js --seed 7 --nights 10 --out soak.json"
   },
   "license": "MIT",
   "dependencies": {
@@ -20,8 +24,12 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/three": "^0.170.0",
+    "puppeteer": "^25.18.1",
     "typescript": "^5.6.3",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }
