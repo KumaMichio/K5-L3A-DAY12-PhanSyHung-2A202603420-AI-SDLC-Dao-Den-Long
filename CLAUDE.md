@@ -3,7 +3,11 @@
 Solo lab: a 3D game built across 4 phases. Correct-to-spec beats complex or pretty.
 
 ## Current phase
-**Phase 1 (PRD-0, Test Contract v1.0)** — spec: [docs/specs/phase-1-PRD-0.md](docs/specs/phase-1-PRD-0.md). Read it before any work. Its "Agent notes" section lists the hard rules and the open ambiguities.
+**Phase 2 (TICKET-02, Test Contract v1.1)** — spec: [docs/specs/phase-2-TICKET-02.md](docs/specs/phase-2-TICKET-02.md). It REPLACES Phase 1 tuning + contract v1.0 where they differ (standard numbers, 3 nights, mandatory 12-step tick order, new snapshot fields, exact shade state names). Our decisions on its open points: [docs/notes/phase-2.md](docs/notes/phase-2.md).
+History: Phase 1 spec [docs/specs/phase-1-PRD-0.md](docs/specs/phase-1-PRD-0.md) (superseded parts are listed in the Phase 2 notes).
+- The 12-step tick order in the ticket is mandatory; `Sim.step` must follow it step by step, with the step number in a comment.
+- Maps are data (`src/sim/maps.ts`), copied from ticket Part 2. Angles are measured from +X toward +Z: (r·cos a, y, r·sin a).
+- Every new feature needs at least one headless scenario in `tests/` (DoD). Full night (21 600 ticks) headless must run in ≤ 30 s.
 
 ## Rules for the agent
 - The Test Contract (headless CLI, input/scenario/JSONL formats, tick model) is exact. Never deviate; when unsure, re-read the spec, don't guess.
